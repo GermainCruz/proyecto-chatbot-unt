@@ -1,0 +1,33 @@
+# Entornos
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node / Next
+node_modules/
+.next/
+out/
+.npm/
+
+# Build
+dist/
+build/
+
+# Storage
+backend/storage/
+*.pdf
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
