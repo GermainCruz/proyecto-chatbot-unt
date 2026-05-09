@@ -7,15 +7,17 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   onSend: (texto: string) => void | Promise<void>;
+  onAttach?: (file: File) => void | Promise<void>;
   disabled?: boolean;
 };
 
-export function CajaPregunta({ onSend, disabled }: Props) {
+export function CajaPregunta({ onSend, onAttach, disabled }: Props) {
   const [texto, setTexto] = useState("");
   const [grabando, setGrabando] = useState(false);
   const [soportaVoz, setSoportaVoz] = useState(false);
   const recognitionRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -96,12 +98,24 @@ export function CajaPregunta({ onSend, disabled }: Props) {
           )}
           <button
             type="button"
+            onClick={() => fileRef.current?.click()}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-zinc-400 transition hover:bg-white/5 hover:text-zinc-100"
             aria-label="Adjuntar archivo"
             title="Adjuntar"
           >
             <Paperclip className="h-4 w-4" />
           </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) await onAttach?.(file);
+              e.currentTarget.value = "";
+            }}
+          />
           <button
             type="button"
             onClick={enviar}

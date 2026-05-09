@@ -130,6 +130,22 @@ export type Mensaje = {
 
 export type ConversacionDetalle = Conversacion & { mensajes: Mensaje[] };
 
+export type TemaChat = {
+  id_categoria: number;
+  nombre: string;
+  descripcion?: string | null;
+  icono?: string | null;
+  documentos_count: number;
+};
+
+export type DocumentoBase = {
+  id_documento: number;
+  titulo: string;
+  estado: "pendiente" | "procesando" | "indexado" | "error";
+  categoria?: string | null;
+  fragmentos_count: number;
+};
+
 export type Categoria = {
   id_categoria: number;
   nombre: string;

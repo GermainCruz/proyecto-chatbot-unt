@@ -51,6 +51,22 @@ class FeedbackIn(BaseModel):
     util: int = Field(ge=-1, le=1)
 
 
+class TemaChatOut(BaseModel):
+    id_categoria: int
+    nombre: str
+    descripcion: str | None = None
+    icono: str | None = None
+    documentos_count: int = 0
+
+
+class DocumentoBaseOut(BaseModel):
+    id_documento: int
+    titulo: str
+    estado: str
+    categoria: str | None = None
+    fragmentos_count: int = 0
+
+
 class RespuestaChatOut(BaseModel):
     id_mensaje_usuario: int
     id_mensaje_asistente: int

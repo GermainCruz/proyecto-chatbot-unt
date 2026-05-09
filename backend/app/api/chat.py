@@ -1,21 +1,23 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.conversacion import Conversacion, Mensaje
+from app.models.documento import CategoriaDocumento, Documento, FragmentoDocumento
 from app.models.usuario import Usuario
 from app.schemas.chat import (
     ConversacionDetalleOut,
     ConversacionOut,
+    DocumentoBaseOut,
     FeedbackIn,
-    MensajeOut,
     NuevaConversacionIn,
     PreguntaIn,
     RespuestaChatOut,
+    TemaChatOut,
 )
 from app.services.rag import responder_pregunta, titulo_para_conversacion
 
@@ -27,6 +29,67 @@ def _check_owner(conv: Conversacion | None, user: Usuario) -> Conversacion:
     if conv is None or conv.id_usuario != user.id_usuario:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
     return conv
+
+
+@router.get("/temas", response_model=list[TemaChatOut])
+def listar_temas(
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        select(
+            CategoriaDocumento,
+            func.count(Documento.id_documento).label("documentos_count"),
+        )
+        .outerjoin(
+            Documento,
+            (Documento.id_categoria == CategoriaDocumento.id_categoria)
+            & (Documento.activo.is_(True))
+            & (Documento.estado == "indexado"),
+        )
+        .group_by(CategoriaDocumento.id_categoria)
+        .order_by(func.count(Documento.id_documento).desc(), CategoriaDocumento.nombre)
+    ).all()
+    return [
+        TemaChatOut(
+            id_categoria=cat.id_categoria,
+            nombre=cat.nombre,
+            descripcion=cat.descripcion,
+            icono=cat.icono,
+            documentos_count=int(count or 0),
+        )
+        for cat, count in rows
+    ]
+
+
+@router.get("/documentos-base", response_model=list[DocumentoBaseOut])
+def listar_documentos_base(
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        select(
+            Documento,
+            CategoriaDocumento.nombre,
+            func.count(FragmentoDocumento.id_fragmento).label("fragmentos_count"),
+        )
+        .outerjoin(CategoriaDocumento, CategoriaDocumento.id_categoria == Documento.id_categoria)
+        .outerjoin(FragmentoDocumento, FragmentoDocumento.id_documento == Documento.id_documento)
+        .where(Documento.activo.is_(True))
+        .group_by(Documento.id_documento, CategoriaDocumento.nombre)
+        .order_by(Documento.fecha_subida.desc())
+        .limit(12)
+    ).all()
+    return [
+        DocumentoBaseOut(
+            id_documento=doc.id_documento,
+            titulo=doc.titulo,
+            estado=doc.estado,
+            categoria=categoria,
+            fragmentos_count=int(fragmentos_count or 0),
+        )
+        for doc, categoria, fragmentos_count in rows
+    ]
 
 
 @router.get("/conversaciones", response_model=list[ConversacionOut])

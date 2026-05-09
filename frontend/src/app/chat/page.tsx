@@ -12,16 +12,53 @@ import {
   api,
   type Conversacion,
   type ConversacionDetalle,
+  type DocumentoBase,
   type Mensaje,
+  type TemaChat,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+
+const COPY_TEMA: Record<string, string> = {
+  matricula:
+    "Fantástico, abrimos el mapa de matrícula. Pregúntame por requisitos, fechas, cursos, créditos o problemas frecuentes y reviso lo disponible en los documentos.",
+  silabo:
+    "Perfecto, vamos con sílabos. Puedes consultarme por cursos, competencias, unidades, bibliografía, evaluación o cualquier dato académico que necesites ubicar.",
+  tramites:
+    "Listo, modo trámites activado. Cuéntame qué proceso quieres resolver y lo aterrizo paso a paso con la información oficial disponible.",
+  bienestar:
+    "Genial, revisemos bienestar universitario. Puedes preguntar por servicios, comedor, salud, apoyo estudiantil, actividades o requisitos de atención.",
+};
+
+function normalizarTema(nombre: string) {
+  return nombre
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function crearMensajeUI(contenido: string): Mensaje {
+  return {
+    id_mensaje: -Date.now(),
+    rol: "assistant",
+    contenido,
+    fuentes: null,
+    util: null,
+    creado_en: new Date().toISOString(),
+  };
+}
 
 export default function ChatPage() {
   const { user, loading: loadingUser } = useAuth();
   const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
+  const [temas, setTemas] = useState<TemaChat[]>([]);
+  const [documentos, setDocumentos] = useState<DocumentoBase[]>([]);
   const [activa, setActiva] = useState<ConversacionDetalle | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [selectedTema, setSelectedTema] = useState<string | null>(null);
+  const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+  const [selectedTema, setSelectedTema] = useState<TemaChat | null>(null);
+  const [mensajeTema, setMensajeTema] = useState<Mensaje | null>(null);
+  const [panelMode, setPanelMode] = useState<"documentos" | "historial">("documentos");
+  const [panelSearch, setPanelSearch] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const nombre = user?.nombre_completo?.split(" ")[0] || "estudiante";
@@ -30,7 +67,7 @@ export default function ChatPage() {
     () => ({
       id_mensaje: 0,
       rol: "assistant",
-      contenido: `Hola ${nombre}, soy tu asistente académico 👋\n\nPuedo ayudarte con: Matrícula, Sílabos, Trámites, Bienestar. Selecciona un tema o escribe tu consulta.`,
+      contenido: `Hola ${nombre}, soy tu asistente académico.\n\nPuedo ayudarte con: Matrícula, Sílabos, Trámites, Bienestar y otros procesos que estén cargados en la base documental. Selecciona un tema o escribe tu consulta.`,
       fuentes: null,
       util: null,
       creado_en: new Date().toISOString(),
@@ -38,7 +75,9 @@ export default function ChatPage() {
     [nombre],
   );
 
-  const mensajes = activa?.mensajes?.length ? activa.mensajes : [bienvenida];
+  const mensajes = activa?.mensajes?.length
+    ? activa.mensajes
+    : [mensajeTema ?? bienvenida];
 
   const cargarConversaciones = useCallback(async () => {
     try {
@@ -49,18 +88,36 @@ export default function ChatPage() {
     }
   }, []);
 
+  const cargarBaseChat = useCallback(async () => {
+    try {
+      const [t, d] = await Promise.all([
+        api.get<TemaChat[]>("/chat/temas"),
+        api.get<DocumentoBase[]>("/chat/documentos-base"),
+      ]);
+      setTemas(t);
+      setDocumentos(d);
+    } catch {
+      /* La UI mantiene temas de respaldo si la API no responde. */
+    }
+  }, []);
+
   useEffect(() => {
-    if (!loadingUser && user) cargarConversaciones();
-  }, [loadingUser, user, cargarConversaciones]);
+    if (!loadingUser && user) {
+      cargarConversaciones();
+      cargarBaseChat();
+    }
+  }, [loadingUser, user, cargarConversaciones, cargarBaseChat]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [mensajes.length, enviando]);
+  }, [mensajes.length, enviando, subiendoArchivo]);
 
   const seleccionar = async (id: string) => {
     try {
       const detalle = await api.get<ConversacionDetalle>(`/chat/conversaciones/${id}`);
       setActiva(detalle);
+      setMensajeTema(null);
+      setPanelMode("historial");
     } catch {
       /* noop */
     }
@@ -69,12 +126,80 @@ export default function ChatPage() {
   const nuevoChat = () => {
     setActiva(null);
     setSelectedTema(null);
+    setMensajeTema(null);
+    setPanelSearch("");
+  };
+
+  const seleccionarTema = (tema: TemaChat | null) => {
+    setSelectedTema(tema);
+    if (!tema) {
+      setMensajeTema(null);
+      return;
+    }
+
+    const clave = normalizarTema(tema.nombre);
+    const copy =
+      COPY_TEMA[clave] ||
+      `Fantástico, seleccionaste el tema "${tema.descripcion || tema.nombre}". Realiza tu consulta y buscaré la respuesta más útil en los documentos disponibles.`;
+    const detalleDocs =
+      tema.documentos_count > 0
+        ? `\n\nActualmente tengo ${tema.documentos_count} documento(s) indexado(s) para este tema.`
+        : "\n\nAún no hay documentos indexados para este tema, pero puedo orientarte si hay información general cargada.";
+
+    setMensajeTema(crearMensajeUI(`${copy}${detalleDocs}`));
   };
 
   const eliminar = async (id: string) => {
     await api.delete(`/chat/conversaciones/${id}`);
     if (activa?.id_conversacion === id) setActiva(null);
     await cargarConversaciones();
+  };
+
+  const adjuntarArchivo = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setMensajeTema(crearMensajeUI("Por ahora solo puedo recibir archivos PDF para alimentar la base documental."));
+      return;
+    }
+
+    if (user?.rol !== "administrador") {
+      setMensajeTema(
+        crearMensajeUI(
+          `Seleccionaste "${file.name}", pero la carga de documentos base está reservada para administradores. Si ese archivo debe alimentar al chatbot, súbelo desde una cuenta admin o desde el panel de documentos.`,
+        ),
+      );
+      setPanelMode("documentos");
+      return;
+    }
+
+    setSubiendoArchivo(true);
+    setMensajeTema(
+      crearMensajeUI(
+        `Estoy subiendo "${file.name}" a la base documental. Cuando termine de indexarse, el chatbot podrá usarlo como fuente.`,
+      ),
+    );
+
+    try {
+      const fd = new FormData();
+      fd.append("titulo", file.name.replace(/\.pdf$/i, ""));
+      if (selectedTema) fd.append("id_categoria", String(selectedTema.id_categoria));
+      fd.append("archivo", file);
+      await api.upload("/admin/documentos", fd);
+      await cargarBaseChat();
+      setPanelMode("documentos");
+      setMensajeTema(
+        crearMensajeUI(
+          `Documento recibido: "${file.name}". Lo dejé en proceso de indexación; en unos momentos aparecerá actualizado en Documentos base.`,
+        ),
+      );
+    } catch {
+      setMensajeTema(
+        crearMensajeUI(
+          `No pude subir "${file.name}". Revisa que sea PDF, que no esté duplicado y que pese menos de 25 MB.`,
+        ),
+      );
+    } finally {
+      setSubiendoArchivo(false);
+    }
   };
 
   const enviarPregunta = async (texto: string) => {
@@ -93,6 +218,7 @@ export default function ChatPage() {
       util: null,
       creado_en: new Date().toISOString(),
     };
+    setMensajeTema(null);
     setActiva({ ...conv, mensajes: [...(conv.mensajes ?? []), optimistico] });
     setEnviando(true);
 
@@ -145,10 +271,14 @@ export default function ChatPage() {
         onNew={nuevoChat}
         onDelete={eliminar}
         onRefresh={cargarConversaciones}
+        onNavigate={(mode) => {
+          setPanelMode(mode === "documentos" ? "documentos" : "historial");
+          if (mode === "buscar") setPanelSearch("");
+        }}
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <ChatHeader selectedTema={selectedTema} onSelectTema={setSelectedTema} />
+        <ChatHeader temas={temas} selectedTema={selectedTema} onSelectTema={seleccionarTema} />
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           <div className="mx-auto flex min-h-full max-w-3xl flex-col px-4 py-4">
@@ -177,19 +307,33 @@ export default function ChatPage() {
                   </div>
                 </div>
               )}
+
+              {subiendoArchivo && (
+                <div className="ml-11 text-xs font-semibold text-zinc-500">
+                  Preparando documento para la base de conocimiento...
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <CajaPregunta onSend={enviarPregunta} disabled={enviando} />
+        <CajaPregunta
+          onSend={enviarPregunta}
+          onAttach={adjuntarArchivo}
+          disabled={enviando || subiendoArchivo}
+        />
       </main>
 
       <RightPanel
         conversaciones={conversaciones}
+        documentos={documentos}
         activeId={activa?.id_conversacion ?? null}
+        mode={panelMode}
+        search={panelSearch}
         onSelect={seleccionar}
         onNew={nuevoChat}
         onDelete={eliminar}
+        onSearchChange={setPanelSearch}
       />
     </div>
   );

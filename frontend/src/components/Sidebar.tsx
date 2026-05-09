@@ -24,9 +24,10 @@ type Props = {
   onNew: () => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
+  onNavigate?: (mode: "documentos" | "historial" | "buscar") => void;
 };
 
-export function Sidebar({ activeId, onNew, onRefresh }: Props) {
+export function Sidebar({ activeId, onNew, onRefresh, onNavigate }: Props) {
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -37,9 +38,9 @@ export function Sidebar({ activeId, onNew, onRefresh }: Props) {
   const navItems = [
     { icon: GraduationCap, label: "Chat", active: true, onClick: undefined },
     { icon: MessageSquarePlus, label: "Nuevo chat", active: false, onClick: onNew },
-    { icon: Search, label: "Buscar", active: false, onClick: undefined },
-    { icon: Clock3, label: "Historial", active: Boolean(activeId), onClick: undefined },
-    { icon: FileText, label: "Documentos", active: false, onClick: undefined },
+    { icon: Search, label: "Buscar", active: false, onClick: () => onNavigate?.("buscar") },
+    { icon: Clock3, label: "Historial", active: Boolean(activeId), onClick: () => onNavigate?.("historial") },
+    { icon: FileText, label: "Documentos", active: false, onClick: () => onNavigate?.("documentos") },
   ];
 
   return (
