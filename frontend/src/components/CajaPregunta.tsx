@@ -127,7 +127,7 @@ export function CajaPregunta({ onSend, onAttach, disabled }: Props) {
           </button>
         </div>
         <p className="mt-2 text-center text-[11px] font-semibold text-zinc-500">
-          Respuestas basadas en documentos oficiales de la UNT
+          Respuestas basadas en documentos oficiales cargados en QueryBot
         </p>
       </div>
     </div>

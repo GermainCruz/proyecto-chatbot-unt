@@ -81,3 +81,61 @@
 .markdown-body h1, .markdown-body h2, .markdown-body h3 {
   font-weight: 600; margin: 0.75rem 0 0.25rem;
 }
+
+.querybot-light.bg-chat-shell,
+.querybot-light .bg-chat-shell {
+  background-color: #dfe5ee !important;
+}
+
+.querybot-light .bg-\[\#242422\],
+.querybot-light .bg-\[\#222220\],
+.querybot-light .bg-\[\#1f1f1d\] {
+  background-color: #ffffff !important;
+}
+
+.querybot-light .border-chat-line,
+.querybot-light .border-zinc-700,
+.querybot-light .border-zinc-600,
+.querybot-light .border-zinc-500 {
+  border-color: #d8e0ec !important;
+}
+
+.querybot-light .text-zinc-100,
+.querybot-light .text-zinc-200,
+.querybot-light .text-zinc-300 {
+  color: #162033 !important;
+}
+
+.querybot-light .text-zinc-400,
+.querybot-light .text-zinc-500 {
+  color: #65758b !important;
+}
+
+.querybot-light .placeholder\:text-zinc-500::placeholder,
+.querybot-light .placeholder\:text-zinc-600::placeholder {
+  color: #8a98aa !important;
+}
+
+.querybot-light .hover\:bg-white\/10:hover,
+.querybot-light .bg-white\/10 {
+  background-color: rgba(15, 43, 84, 0.08) !important;
+}
+
+.querybot-light .bg-white\/15 {
+  background-color: rgba(15, 43, 84, 0.12) !important;
+}
+
+.querybot-light .text-white,
+.querybot-light .text-white\/75,
+.querybot-light .text-white\/55 {
+  color: #ffffff !important;
+}
+
+.querybot-light .querybot-user-message,
+.querybot-light .querybot-user-message * {
+  color: #ffffff !important;
+}
+
+.querybot-light .querybot-history-title {
+  color: #65758b !important;
+}

@@ -7,9 +7,9 @@ import "@/styles/globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "UNT Bot — Asistente Universidad Nacional de Trujillo",
+  title: "QueryBot - Asistente academico",
   description:
-    "Asistente virtual para resolver dudas frecuentes de los estudiantes de la UNT.",
+    "Asistente virtual para resolver dudas frecuentes a partir de documentos oficiales.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

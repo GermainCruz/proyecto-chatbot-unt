@@ -58,7 +58,7 @@ export default function HomePage() {
               Resuelve tus dudas universitarias en segundos
             </h1>
             <p className="text-lg text-slate-600 dark:text-slate-300">
-              UNT Bot consulta documentos oficiales recopilados por el equipo y te entrega respuestas claras
+              QueryBot consulta documentos oficiales recopilados por el equipo y te entrega respuestas claras
               sobre matrícula, sílabos, bienestar, trámites, biblioteca, prácticas y mucho más.
             </p>
             <div className="flex flex-wrap gap-3">
@@ -168,7 +168,7 @@ export default function HomePage() {
       </main>
 
       <footer className="border-t border-slate-200 bg-white py-6 text-center text-sm text-slate-500 dark:bg-slate-950 dark:border-slate-800">
-        © {new Date().getFullYear()} UNT Bot · Universidad Nacional de Trujillo
+        © {new Date().getFullYear()} QueryBot
       </footer>
     </div>
   );

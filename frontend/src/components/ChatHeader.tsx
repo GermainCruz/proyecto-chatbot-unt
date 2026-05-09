@@ -1,28 +1,32 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { useState } from "react";
 
 import { type TemaChat } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
+// Coloca una imagen decorativa o mascota en `frontend/public/querybot-header.png`.
+const HEADER_IMAGE_SRC = "/querybot-header.png";
+
 const TEMAS_FALLBACK: TemaChat[] = [
-  { id_categoria: 1, nombre: "matricula", descripcion: "Procesos de matrícula", documentos_count: 0 },
-  { id_categoria: 2, nombre: "silabo", descripcion: "Sílabos y currículas", documentos_count: 0 },
-  { id_categoria: 3, nombre: "tramites", descripcion: "Trámites académicos", documentos_count: 0 },
+  { id_categoria: 1, nombre: "matricula", descripcion: "Procesos de matricula", documentos_count: 0 },
+  { id_categoria: 2, nombre: "silabo", descripcion: "Silabos y curriculas", documentos_count: 0 },
+  { id_categoria: 3, nombre: "tramites", descripcion: "Tramites academicos", documentos_count: 0 },
   { id_categoria: 4, nombre: "bienestar", descripcion: "Bienestar universitario", documentos_count: 0 },
 ];
 
 type Props = {
   temas: TemaChat[];
   selectedTema: TemaChat | null;
+  temasDisabled?: boolean;
   onSelectTema: (tema: TemaChat | null) => void;
 };
 
 function labelTema(tema: TemaChat) {
   const fixed: Record<string, string> = {
-    matricula: "Matrícula",
-    silabo: "Sílabos",
-    tramites: "Trámites",
+    matricula: "Matricula",
+    silabo: "Silabos",
+    tramites: "Tramites",
     bienestar: "Bienestar",
   };
   if (fixed[tema.nombre]) return fixed[tema.nombre];
@@ -35,7 +39,8 @@ function labelTema(tema: TemaChat) {
     .replace(/^./, (c) => c.toUpperCase());
 }
 
-export function ChatHeader({ temas, selectedTema, onSelectTema }: Props) {
+export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }: Props) {
+  const [imageError, setImageError] = useState(false);
   const prioridad = ["matricula", "silabo", "tramites", "bienestar"];
   const ordenados = [...temas].sort((a, b) => {
     const ai = prioridad.indexOf(a.nombre);
@@ -46,27 +51,27 @@ export function ChatHeader({ temas, selectedTema, onSelectTema }: Props) {
   const visibles = ordenados.length > 0 ? ordenados.slice(0, 6) : TEMAS_FALLBACK;
 
   return (
-    <header className="border-b border-chat-line bg-chat-shell px-4 py-3 text-white">
-      <div className="mb-4 flex h-8 items-center gap-3 rounded-lg bg-[#242422] px-3">
-        <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#565653]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#565653]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#565653]" />
-        </div>
-        <div className="min-w-0 flex-1 rounded-md bg-[#20201e] px-3 py-1 text-xs font-semibold text-zinc-300">
-          https://ChatUNTSistemas.com/chat
-        </div>
-        <RefreshCw className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
-      </div>
-
+    <header className="border-b border-chat-line bg-chat-shell px-5 py-4 text-white">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <h1 className="text-lg font-bold leading-none text-zinc-100">
-            Asistente UNT Sistemas
-          </h1>
-          <div className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-emerald-500">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-            En línea · documentos actualizados
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-zinc-700 bg-[#242422]">
+            {!imageError ? (
+              <img
+                src={HEADER_IMAGE_SRC}
+                alt="Imagen QueryBot"
+                className="h-full w-full object-cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <span className="text-lg font-black text-chat-gold">QB</span>
+            )}
+          </div>
+          <div>
+            <h1 className="text-xl font-bold leading-none text-zinc-100">QueryBot</h1>
+            <div className="mt-1.5 flex items-center gap-2 text-xs font-semibold text-emerald-500">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              En linea · base documental conectada
+            </div>
           </div>
         </div>
 
@@ -78,9 +83,10 @@ export function ChatHeader({ temas, selectedTema, onSelectTema }: Props) {
               <button
                 key={tema.id_categoria}
                 type="button"
+                disabled={temasDisabled}
                 onClick={() => onSelectTema(active ? null : tema)}
                 className={cn(
-                  "rounded-full border px-4 py-1.5 text-xs font-semibold transition",
+                  "rounded-full border px-4 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45",
                   active
                     ? "border-chat-primary bg-chat-primary text-white"
                     : "border-zinc-500/70 bg-transparent text-zinc-400 hover:border-zinc-300 hover:text-zinc-100",

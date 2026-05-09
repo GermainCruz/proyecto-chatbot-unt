@@ -102,7 +102,7 @@ export default function AdminDocumentosPage() {
           Base de conocimiento
         </h1>
         <p className="text-sm text-slate-500">
-          Sube los documentos oficiales (PDF) que alimentarán a UNT Bot.
+          Sube los documentos oficiales (PDF) que alimentarán a QueryBot.
         </p>
       </header>
 

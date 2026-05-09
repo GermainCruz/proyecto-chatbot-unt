@@ -57,11 +57,11 @@ export function MensajeBurbuja({ mensaje, onFeedback }: Props) {
         className={cn(
           "max-w-[min(84%,620px)] px-4 py-3 text-sm font-semibold leading-relaxed shadow-sm",
           isUser
-            ? "rounded-2xl rounded-br-sm border border-zinc-600 bg-[#252523] text-zinc-100"
+            ? "querybot-user-message rounded-2xl rounded-br-sm border border-zinc-600 bg-[#252523] text-zinc-100"
             : "rounded-2xl rounded-tl-sm bg-chat-primary text-white",
         )}
       >
-        <div className={cn("markdown-body", isUser ? "text-zinc-100" : "text-white")}>
+        <div className={cn("markdown-body", isUser ? "querybot-user-message text-zinc-100" : "text-white")}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{mensaje.contenido}</ReactMarkdown>
         </div>
 

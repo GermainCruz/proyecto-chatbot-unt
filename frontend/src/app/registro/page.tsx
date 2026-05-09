@@ -49,7 +49,7 @@ export default function RegistroPage() {
             Únete a la comunidad UNT digital.
           </h2>
           <p className="text-white/85">
-            Crea tu cuenta con tu correo institucional para empezar a chatear con UNT Bot.
+            Crea tu cuenta con tu correo institucional para empezar a chatear con QueryBot.
           </p>
         </div>
         <p className="text-xs text-white/70">© Universidad Nacional de Trujillo</p>

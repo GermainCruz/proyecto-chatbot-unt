@@ -36,10 +36,10 @@ export default function LoginPage() {
         <Logo className="text-white [&_p]:!text-white" />
         <div className="space-y-3 max-w-md">
           <h2 className="text-4xl font-bold leading-tight">
-            Tu asistente académico, siempre disponible.
+            QueryBot, tu asistente academico documental.
           </h2>
           <p className="text-white/80">
-            Inicia sesión con tu correo institucional para acceder al chat oficial UNT Bot.
+            Inicia sesion con tu correo institucional para acceder a QueryBot.
           </p>
         </div>
         <p className="text-xs text-white/70">© Universidad Nacional de Trujillo</p>

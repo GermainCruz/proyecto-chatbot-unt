@@ -21,7 +21,7 @@ const SLIDES = [
   {
     titulo: "Tu asistente 24/7",
     descripcion:
-      "Resuelve tus dudas sobre matrícula, sílabos, biblioteca, prácticas, trámites y mucho más con UNT Bot.",
+      "Resuelve tus dudas sobre matrícula, sílabos, biblioteca, prácticas, trámites y mucho más con QueryBot.",
     gradient: "from-unt-gold-600 via-unt-gold-500 to-unt-blue-700",
   },
 ];

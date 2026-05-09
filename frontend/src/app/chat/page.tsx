@@ -20,13 +20,13 @@ import { useAuth } from "@/lib/auth-context";
 
 const COPY_TEMA: Record<string, string> = {
   matricula:
-    "Fantástico, abrimos el mapa de matrícula. Pregúntame por requisitos, fechas, cursos, créditos o problemas frecuentes y reviso lo disponible en los documentos.",
+    "Genial, elegiste Matricula. Vamos paso a paso: puedes preguntarme por requisitos, fechas, cursos disponibles, creditos o problemas frecuentes. Estoy listo para revisar la base documental contigo.",
   silabo:
-    "Perfecto, vamos con sílabos. Puedes consultarme por cursos, competencias, unidades, bibliografía, evaluación o cualquier dato académico que necesites ubicar.",
+    "Perfecto, abrimos el mundo de Silabos. Preguntame por competencias, unidades, evaluacion, bibliografia o datos de algun curso especifico.",
   tramites:
-    "Listo, modo trámites activado. Cuéntame qué proceso quieres resolver y lo aterrizo paso a paso con la información oficial disponible.",
+    "Listo, modo Tramites activado. Dime que proceso quieres resolver y lo ordenamos sin drama: requisitos, pasos, oficinas, plazos o documentos necesarios.",
   bienestar:
-    "Genial, revisemos bienestar universitario. Puedes preguntar por servicios, comedor, salud, apoyo estudiantil, actividades o requisitos de atención.",
+    "Buena eleccion: Bienestar. Puedes preguntarme por comedor, salud, apoyo estudiantil, actividades o requisitos de atencion. Vamos a ubicar la informacion util.",
 };
 
 function normalizarTema(nombre: string) {
@@ -57,8 +57,11 @@ export default function ChatPage() {
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
   const [selectedTema, setSelectedTema] = useState<TemaChat | null>(null);
   const [mensajeTema, setMensajeTema] = useState<Mensaje | null>(null);
-  const [panelMode, setPanelMode] = useState<"documentos" | "historial">("documentos");
+  const [panelMode, setPanelMode] = useState<"documentos" | "historial">("historial");
   const [panelSearch, setPanelSearch] = useState("");
+  const [temasPorConversacion, setTemasPorConversacion] = useState<Record<string, string>>({});
+  const [archivados, setArchivados] = useState<string[]>([]);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const nombre = user?.nombre_completo?.split(" ")[0] || "estudiante";
@@ -67,7 +70,7 @@ export default function ChatPage() {
     () => ({
       id_mensaje: 0,
       rol: "assistant",
-      contenido: `Hola ${nombre}, soy tu asistente académico.\n\nPuedo ayudarte con: Matrícula, Sílabos, Trámites, Bienestar y otros procesos que estén cargados en la base documental. Selecciona un tema o escribe tu consulta.`,
+      contenido: `Hola ${nombre}, soy QueryBot.\n\nPuedes escribir una consulta general de inmediato. Si tu duda pertenece a un proceso especifico, elige primero un tema para que el chat quede organizado desde el inicio.`,
       fuentes: null,
       util: null,
       creado_en: new Date().toISOString(),
@@ -78,6 +81,14 @@ export default function ChatPage() {
   const mensajes = activa?.mensajes?.length
     ? activa.mensajes
     : [mensajeTema ?? bienvenida];
+  const temasBloqueados = Boolean(activa?.mensajes?.length);
+  const canNewChat = temasBloqueados;
+  const conversacionesVisibles = conversaciones.filter(
+    (conv) => !archivados.includes(conv.id_conversacion),
+  );
+  const conversacionesArchivadas = conversaciones.filter((conv) =>
+    archivados.includes(conv.id_conversacion),
+  );
 
   const cargarConversaciones = useCallback(async () => {
     try {
@@ -105,12 +116,33 @@ export default function ChatPage() {
     if (!loadingUser && user) {
       cargarConversaciones();
       cargarBaseChat();
+      const stored = window.localStorage.getItem("querybot_temas_conversacion");
+      if (stored) setTemasPorConversacion(JSON.parse(stored));
+      const storedArchived = window.localStorage.getItem("querybot_archived_chats");
+      if (storedArchived) setArchivados(JSON.parse(storedArchived));
+      const storedTheme = window.localStorage.getItem("querybot_theme") as "dark" | "light" | null;
+      if (storedTheme) setTheme(storedTheme);
     }
   }, [loadingUser, user, cargarConversaciones, cargarBaseChat]);
 
   useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    window.localStorage.setItem("querybot_theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [mensajes.length, enviando, subiendoArchivo]);
+
+  const guardarTemaConversacion = (id: string, tema: TemaChat | null) => {
+    if (!tema) return;
+    const label = tema.descripcion || tema.nombre;
+    setTemasPorConversacion((prev) => {
+      const next = { ...prev, [id]: label };
+      window.localStorage.setItem("querybot_temas_conversacion", JSON.stringify(next));
+      return next;
+    });
+  };
 
   const seleccionar = async (id: string) => {
     try {
@@ -140,11 +172,11 @@ export default function ChatPage() {
     const clave = normalizarTema(tema.nombre);
     const copy =
       COPY_TEMA[clave] ||
-      `Fantástico, seleccionaste el tema "${tema.descripcion || tema.nombre}". Realiza tu consulta y buscaré la respuesta más útil en los documentos disponibles.`;
+      `Excelente, seleccionaste "${tema.descripcion || tema.nombre}". Haz tu consulta y buscare la respuesta mas util en los documentos disponibles.`;
     const detalleDocs =
       tema.documentos_count > 0
         ? `\n\nActualmente tengo ${tema.documentos_count} documento(s) indexado(s) para este tema.`
-        : "\n\nAún no hay documentos indexados para este tema, pero puedo orientarte si hay información general cargada.";
+        : "\n\nAun no hay documentos indexados para este tema, pero puedo orientarte si hay informacion general cargada.";
 
     setMensajeTema(crearMensajeUI(`${copy}${detalleDocs}`));
   };
@@ -152,7 +184,51 @@ export default function ChatPage() {
   const eliminar = async (id: string) => {
     await api.delete(`/chat/conversaciones/${id}`);
     if (activa?.id_conversacion === id) setActiva(null);
+    setArchivados((prev) => {
+      const next = prev.filter((x) => x !== id);
+      window.localStorage.setItem("querybot_archived_chats", JSON.stringify(next));
+      return next;
+    });
     await cargarConversaciones();
+  };
+
+  const archivar = (id: string) => {
+    setArchivados((prev) => {
+      const next = Array.from(new Set([...prev, id]));
+      window.localStorage.setItem("querybot_archived_chats", JSON.stringify(next));
+      return next;
+    });
+    if (activa?.id_conversacion === id) setActiva(null);
+  };
+
+  const restaurarArchivado = (id: string) => {
+    setArchivados((prev) => {
+      const next = prev.filter((x) => x !== id);
+      window.localStorage.setItem("querybot_archived_chats", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const exportarChats = () => {
+    const data = JSON.stringify({ conversaciones, temasPorConversacion }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "querybot-chats.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const eliminarTodosLosChats = async () => {
+    if (!confirm("Eliminar todos los chats del historial?")) return;
+    await Promise.all(conversaciones.map((conv) => api.delete(`/chat/conversaciones/${conv.id_conversacion}`)));
+    setActiva(null);
+    setConversaciones([]);
+    setTemasPorConversacion({});
+    setArchivados([]);
+    window.localStorage.removeItem("querybot_temas_conversacion");
+    window.localStorage.removeItem("querybot_archived_chats");
   };
 
   const adjuntarArchivo = async (file: File) => {
@@ -164,7 +240,7 @@ export default function ChatPage() {
     if (user?.rol !== "administrador") {
       setMensajeTema(
         crearMensajeUI(
-          `Seleccionaste "${file.name}", pero la carga de documentos base está reservada para administradores. Si ese archivo debe alimentar al chatbot, súbelo desde una cuenta admin o desde el panel de documentos.`,
+          `Seleccionaste "${file.name}", pero la carga de documentos base esta reservada para administradores. Si ese archivo debe alimentar a QueryBot, subelo desde una cuenta admin o desde el panel de documentos.`,
         ),
       );
       setPanelMode("documentos");
@@ -174,7 +250,7 @@ export default function ChatPage() {
     setSubiendoArchivo(true);
     setMensajeTema(
       crearMensajeUI(
-        `Estoy subiendo "${file.name}" a la base documental. Cuando termine de indexarse, el chatbot podrá usarlo como fuente.`,
+        `Estoy subiendo "${file.name}" a la base documental. Cuando termine de indexarse, QueryBot podra usarlo como fuente.`,
       ),
     );
 
@@ -188,13 +264,13 @@ export default function ChatPage() {
       setPanelMode("documentos");
       setMensajeTema(
         crearMensajeUI(
-          `Documento recibido: "${file.name}". Lo dejé en proceso de indexación; en unos momentos aparecerá actualizado en Documentos base.`,
+          `Documento recibido: "${file.name}". Lo deje en proceso de indexacion; en unos momentos aparecera actualizado en Documentos base.`,
         ),
       );
     } catch {
       setMensajeTema(
         crearMensajeUI(
-          `No pude subir "${file.name}". Revisa que sea PDF, que no esté duplicado y que pese menos de 25 MB.`,
+          `No pude subir "${file.name}". Revisa que sea PDF, que no este duplicado y que pese menos de 25 MB.`,
         ),
       );
     } finally {
@@ -208,6 +284,7 @@ export default function ChatPage() {
       const nueva = await api.post<Conversacion>("/chat/conversaciones", {});
       conv = { ...nueva, mensajes: [] };
       setActiva(conv);
+      guardarTemaConversacion(conv.id_conversacion, selectedTema);
     }
 
     const optimistico: Mensaje = {
@@ -241,7 +318,7 @@ export default function ChatPage() {
         id_mensaje: -Date.now(),
         rol: "assistant",
         contenido:
-          "Ocurrió un error al procesar tu pregunta. Intenta nuevamente en unos segundos.",
+          "Ocurrio un error al procesar tu pregunta. Intenta nuevamente en unos segundos.",
         fuentes: null,
         util: null,
         creado_en: new Date().toISOString(),
@@ -263,14 +340,22 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-chat-shell text-zinc-100">
+    <div className={`querybot-${theme} flex h-screen overflow-hidden bg-chat-shell text-zinc-100`}>
       <Sidebar
-        conversaciones={conversaciones}
+        conversaciones={conversacionesVisibles}
         activeId={activa?.id_conversacion ?? null}
         onSelect={seleccionar}
         onNew={nuevoChat}
         onDelete={eliminar}
         onRefresh={cargarConversaciones}
+        onExportChats={exportarChats}
+        onDeleteAllChats={eliminarTodosLosChats}
+        canNewChat={canNewChat}
+        theme={theme}
+        archivedChats={conversacionesArchivadas}
+        onThemeChange={setTheme}
+        onSelectArchived={seleccionar}
+        onRestoreArchived={restaurarArchivado}
         onNavigate={(mode) => {
           setPanelMode(mode === "documentos" ? "documentos" : "historial");
           if (mode === "buscar") setPanelSearch("");
@@ -278,7 +363,12 @@ export default function ChatPage() {
       />
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <ChatHeader temas={temas} selectedTema={selectedTema} onSelectTema={seleccionarTema} />
+        <ChatHeader
+          temas={temas}
+          selectedTema={selectedTema}
+          temasDisabled={temasBloqueados}
+          onSelectTema={seleccionarTema}
+        />
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           <div className="mx-auto flex min-h-full max-w-3xl flex-col px-4 py-4">
@@ -325,13 +415,16 @@ export default function ChatPage() {
       </main>
 
       <RightPanel
-        conversaciones={conversaciones}
+        conversaciones={conversacionesVisibles}
         documentos={documentos}
         activeId={activa?.id_conversacion ?? null}
         mode={panelMode}
         search={panelSearch}
+        temasPorConversacion={temasPorConversacion}
+        canNewChat={canNewChat}
         onSelect={seleccionar}
         onNew={nuevoChat}
+        onArchive={archivar}
         onDelete={eliminar}
         onSearchChange={setPanelSearch}
       />
