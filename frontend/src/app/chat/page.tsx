@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Bot } from "lucide-react";
 
 import { CajaPregunta } from "@/components/CajaPregunta";
+import { ChatHeader } from "@/components/ChatHeader";
 import { MensajeBurbuja } from "@/components/MensajeBurbuja";
+import { RightPanel } from "@/components/RightPanel";
 import { Sidebar } from "@/components/Sidebar";
 import {
   api,
@@ -14,21 +16,29 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
-const SUGERENCIAS = [
-  "¿Dónde quedan los laboratorios?",
-  "¿Qué necesito para prestar un libro de la biblioteca?",
-  "¿Cómo recupero mi correo @unitru.edu.pe?",
-  "¿Qué nivel de inglés necesito para sacar mi bachiller?",
-  "¿A partir de qué ciclo me exigen prácticas?",
-  "¿Cómo puedo adelantar un curso?",
-];
-
 export default function ChatPage() {
   const { user, loading: loadingUser } = useAuth();
   const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
   const [activa, setActiva] = useState<ConversacionDetalle | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [selectedTema, setSelectedTema] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const nombre = user?.nombre_completo?.split(" ")[0] || "estudiante";
+
+  const bienvenida = useMemo<Mensaje>(
+    () => ({
+      id_mensaje: 0,
+      rol: "assistant",
+      contenido: `Hola ${nombre}, soy tu asistente académico 👋\n\nPuedo ayudarte con: Matrícula, Sílabos, Trámites, Bienestar. Selecciona un tema o escribe tu consulta.`,
+      fuentes: null,
+      util: null,
+      creado_en: new Date().toISOString(),
+    }),
+    [nombre],
+  );
+
+  const mensajes = activa?.mensajes?.length ? activa.mensajes : [bienvenida];
 
   const cargarConversaciones = useCallback(async () => {
     try {
@@ -45,7 +55,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [activa?.mensajes?.length, enviando]);
+  }, [mensajes.length, enviando]);
 
   const seleccionar = async (id: string) => {
     try {
@@ -56,10 +66,9 @@ export default function ChatPage() {
     }
   };
 
-  const nuevoChat = async () => {
-    const conv = await api.post<Conversacion>("/chat/conversaciones", {});
-    await cargarConversaciones();
-    await seleccionar(conv.id_conversacion);
+  const nuevoChat = () => {
+    setActiva(null);
+    setSelectedTema(null);
   };
 
   const eliminar = async (id: string) => {
@@ -88,7 +97,7 @@ export default function ChatPage() {
     setEnviando(true);
 
     try {
-      const res = await api.post<{
+      await api.post<{
         id_mensaje_usuario: number;
         id_mensaje_asistente: number;
         contenido: string;
@@ -101,12 +110,12 @@ export default function ChatPage() {
       );
       setActiva(detalle);
       cargarConversaciones();
-    } catch (err: any) {
+    } catch {
       const errorMsg: Mensaje = {
         id_mensaje: -Date.now(),
         rol: "assistant",
         contenido:
-          "⚠️ Ocurrió un error al procesar tu pregunta. Intenta nuevamente en unos segundos.",
+          "Ocurrió un error al procesar tu pregunta. Intenta nuevamente en unos segundos.",
         fuentes: null,
         util: null,
         creado_en: new Date().toISOString(),
@@ -121,12 +130,14 @@ export default function ChatPage() {
 
   if (loadingUser) {
     return (
-      <div className="grid h-screen place-items-center text-slate-500">Cargando…</div>
+      <div className="grid h-screen place-items-center bg-chat-shell text-sm font-semibold text-zinc-400">
+        Cargando...
+      </div>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-chat-shell text-zinc-100">
       <Sidebar
         conversaciones={conversaciones}
         activeId={activa?.id_conversacion ?? null}
@@ -136,67 +147,50 @@ export default function ChatPage() {
         onRefresh={cargarConversaciones}
       />
 
-      <main className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-unt-blue-700" />
-            <h1 className="text-base font-semibold">
-              {activa?.titulo || "UNT Bot"}
-            </h1>
-          </div>
-          <span className="text-xs text-slate-400">{user?.correo}</span>
-        </header>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <ChatHeader selectedTema={selectedTema} onSelectTema={setSelectedTema} />
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="mx-auto max-w-3xl px-4 py-6 space-y-5">
-            {!activa || activa.mensajes.length === 0 ? (
-              <div className="mt-8 text-center">
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-unt-blue-700 to-unt-blue-900 text-unt-gold-400 shadow-soft">
-                  <Sparkles className="h-7 w-7" />
-                </div>
-                <h2 className="mt-4 text-2xl font-bold text-unt-blue-900 dark:text-unt-blue-100">
-                  Hola{user ? `, ${user.nombre_completo.split(" ")[0]}` : ""} 👋
-                </h2>
-                <p className="mt-1 text-slate-500">
-                  ¿En qué puedo ayudarte hoy? Empieza con una de estas preguntas:
-                </p>
-                <div className="mx-auto mt-6 grid max-w-2xl gap-2 sm:grid-cols-2">
-                  {SUGERENCIAS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => enviarPregunta(s)}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:border-unt-blue-500 hover:bg-unt-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-unt-blue-800/30"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              activa.mensajes.map((m) => (
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+          <div className="mx-auto flex min-h-full max-w-3xl flex-col px-4 py-4">
+            <div className="mb-5 flex items-center gap-3 text-xs font-semibold text-zinc-500">
+              <span className="h-px flex-1 bg-chat-line" />
+              Hoy
+              <span className="h-px flex-1 bg-chat-line" />
+            </div>
+
+            <div className="flex-1 space-y-4">
+              {mensajes.map((m) => (
                 <MensajeBurbuja key={m.id_mensaje} mensaje={m} />
-              ))
-            )}
+              ))}
 
-            {enviando && (
-              <div className="flex items-center gap-3">
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-unt-blue-700 text-white">
-                  <Bot className="h-4 w-4" />
-                </div>
-                <div className="rounded-2xl bg-white border border-slate-200 px-4 py-3 dark:bg-slate-900 dark:border-slate-800">
-                  <div className="flex gap-1">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-slate-400" />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-slate-400 [animation-delay:0.2s]" />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-slate-400 [animation-delay:0.4s]" />
+              {enviando && (
+                <div className="flex items-center gap-3">
+                  <div className="hidden h-8 w-8 place-items-center rounded-full bg-chat-primary text-white sm:grid">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="rounded-2xl rounded-tl-sm bg-chat-primary px-4 py-3">
+                    <div className="flex gap-1">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-white/70" />
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-white/70 [animation-delay:0.2s]" />
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-white/70 [animation-delay:0.4s]" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
         <CajaPregunta onSend={enviarPregunta} disabled={enviando} />
       </main>
+
+      <RightPanel
+        conversaciones={conversaciones}
+        activeId={activa?.id_conversacion ?? null}
+        onSelect={seleccionar}
+        onNew={nuevoChat}
+        onDelete={eliminar}
+      />
     </div>
   );
 }

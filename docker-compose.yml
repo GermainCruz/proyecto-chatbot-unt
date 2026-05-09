@@ -35,7 +35,7 @@ services:
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
       ALLOWED_EMAIL_DOMAIN: unitru.edu.pe
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@unitru.edu.pe}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin1234*}
       ADMIN_NAME: ${ADMIN_NAME:-Administrador UNT Bot}

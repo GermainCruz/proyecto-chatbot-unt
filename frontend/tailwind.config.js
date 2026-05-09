@@ -5,6 +5,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        chat: {
+          primary: "#002570",
+          primarySoft: "#0B3F9C",
+          gold: "#D4960A",
+          shell: "#2D2D2B",
+          shellSoft: "#383836",
+          line: "#494946",
+        },
         unt: {
           blue: {
             50: "#EEF3FB",
