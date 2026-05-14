@@ -23,6 +23,9 @@ from app.schemas.documento import (
     UsuarioUpdateIn,
 )
 from app.services.rag import indexar_documento
+from dotenv import set_key
+from app.models.api_key import ApiKey
+from app.schemas.api_key import ApiKeyCreate, ApiKeyOut
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -236,3 +239,96 @@ def metricas(
         mensajes_utiles=int(msg_pos),
         mensajes_no_utiles=int(msg_neg),
     )
+
+
+# ---------- Claves de API ----------
+
+@router.get("/api-keys", response_model=list[ApiKeyOut])
+def listar_api_keys(db: Session = Depends(get_db), _: Usuario = Depends(require_admin)):
+    return db.execute(select(ApiKey).order_by(ApiKey.creada_en.desc())).scalars().all()
+
+
+@router.post("/api-keys", response_model=ApiKeyOut, status_code=201)
+def crear_api_key(
+    payload: ApiKeyCreate,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_admin),
+):
+    key = ApiKey(nombre=payload.nombre, clave=payload.clave)
+    db.add(key)
+    db.commit()
+    db.refresh(key)
+    return key
+
+
+@router.post("/api-keys/{key_id}/activar", response_model=ApiKeyOut)
+def activar_api_key(
+    key_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_admin),
+):
+    key = db.get(ApiKey, key_id)
+    if not key:
+        raise HTTPException(status_code=404, detail="Clave no encontrada")
+
+    # Desactivar todas
+    from sqlalchemy import update
+    db.execute(update(ApiKey).values(activa=False))
+    db.commit() # Asegurar que se guarde el reset
+
+    # Activar la seleccionada
+    key.activa = True
+    db.commit()
+    db.refresh(key)
+
+    # Actualizar .env
+    try:
+        # Intentar encontrar el .env en varias ubicaciones posibles
+        posibles_rutas = [
+            Path(".env"),
+            Path("/app/.env"),
+            Path(__file__).parent.parent.parent.parent / ".env"
+        ]
+        
+        env_path = None
+        for p in posibles_rutas:
+            if p.exists():
+                env_path = p
+                break
+
+        if env_path:
+            set_key(str(env_path), "GOOGLE_API_KEY", key.clave)
+            logger.info(f"Archivo .env actualizado en {env_path} con la clave: {key.nombre}")
+        else:
+            logger.warning("No se encontró el archivo .env en ninguna de las rutas probadas")
+
+        # También actualizar en el proceso actual
+        import os
+        os.environ["GOOGLE_API_KEY"] = key.clave
+        # Intentar actualizar settings si es posible
+        try:
+            settings.GOOGLE_API_KEY = key.clave
+        except Exception:
+            pass
+
+    except Exception as e:
+        logger.error(f"Error actualizando .env: {e}")
+
+    return key
+
+
+@router.delete("/api-keys/{key_id}", status_code=204)
+def eliminar_api_key(
+    key_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_admin),
+):
+    key = db.get(ApiKey, key_id)
+    if not key:
+        raise HTTPException(status_code=404, detail="Clave no encontrada")
+
+    if key.activa:
+        raise HTTPException(status_code=400, detail="No se puede eliminar la clave que está en uso")
+
+    db.delete(key)
+    db.commit()

@@ -15,6 +15,7 @@ bcrypt==4.2.0
 email-validator==2.2.0
 
 openai==1.51.0
+google-generativeai==0.8.3
 tiktoken==0.8.0
 
 pypdf==5.0.1

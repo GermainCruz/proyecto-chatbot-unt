@@ -112,7 +112,7 @@ CREATE TABLE fragmentos_documentos (
     indice_chunk  INTEGER NOT NULL,
     texto         TEXT NOT NULL,
     tokens        INTEGER,
-    embedding     vector(1536),
+    embedding     vector(768),
     metadatos     JSONB,
     creado_en     TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE (id_documento, indice_chunk)

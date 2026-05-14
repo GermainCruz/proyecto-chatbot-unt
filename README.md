@@ -99,6 +99,26 @@ Se crea automáticamente al iniciar el backend con los valores de `.env`:
 3. Cierra sesión y **regístrate como estudiante** con un correo `@unitru.edu.pe`.
 4. Haz preguntas en el chat. UNT Bot recupera fragmentos relevantes y responde citando las fuentes.
 
+## 🛠️ Comandos para arrancar el app (desarrollo local)
+
+Si prefieres ejecutar frontend y backend por separado sin Docker:
+
+### Backend (FastAPI)
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate  # En Windows
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Frontend (Next.js)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 ### Carga masiva por CLI (opcional)
 
 ```bash
@@ -201,3 +221,32 @@ npm run dev
 ## 📄 Licencia
 
 Proyecto académico — Universidad Nacional de Trujillo, curso de Gestión de Servicios de TI.
+-------------------------------------------------------------------
+#aqui
+
+## 🧪 Flujo de uso
+
+1. Ingresa como **administrador** en `/login`.
+2. Ve a **Panel admin → Documentos** y sube uno o más PDFs oficiales (sílabos, reglamentos, guías…). El sistema los indexa automáticamente (estado pasa de `pendiente` → `procesando` → `indexado`).
+3. Cierra sesión y **regístrate como estudiante** con un correo `@unitru.edu.pe`.
+4. Haz preguntas en el chat. UNT Bot recupera fragmentos relevantes y responde citando las fuentes.
+
+## 🛠️ Comandos para arrancar el app (desarrollo local)
+
+Si prefieres ejecutar frontend y backend por separado sin Docker:
+
+### Backend (FastAPI)
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate  # En Windows
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Frontend (Next.js)
+```bash
+cd frontend
+npm install
+npm run dev
+```

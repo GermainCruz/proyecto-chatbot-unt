@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000"
 
     OPENAI_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIM: int = 1536

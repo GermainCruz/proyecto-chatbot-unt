@@ -1,6 +1,7 @@
 from app.models.usuario import Usuario, Sesion
 from app.models.conversacion import Conversacion, Mensaje
 from app.models.documento import Documento, FragmentoDocumento, CategoriaDocumento
+from app.models.api_key import ApiKey
 
 __all__ = [
     "Usuario",
@@ -10,4 +11,5 @@ __all__ = [
     "Documento",
     "FragmentoDocumento",
     "CategoriaDocumento",
+    "ApiKey",
 ]
