@@ -1,12 +1,21 @@
 "use client";
 
-import { Archive, FileText, MessageSquareText, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  FileText,
+  MessageSquareText,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import { type Conversacion, type DocumentoBase } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 
 type Props = {
   conversaciones: Conversacion[];
+  archivedChats?: Conversacion[];
   documentos: DocumentoBase[];
   activeId: string | null;
   mode: "documentos" | "historial";
@@ -16,12 +25,14 @@ type Props = {
   onSelect: (id: string) => void;
   onNew: () => void;
   onArchive: (id: string) => void;
+  onRestoreArchived?: (id: string) => void;
   onDelete: (id: string) => void;
   onSearchChange: (value: string) => void;
 };
 
 export function RightPanel({
   conversaciones,
+  archivedChats = [],
   documentos,
   activeId,
   mode,
@@ -31,6 +42,7 @@ export function RightPanel({
   onSelect,
   onNew,
   onArchive,
+  onRestoreArchived,
   onDelete,
   onSearchChange,
 }: Props) {
@@ -142,6 +154,43 @@ export function RightPanel({
             </ul>
           )}
         </div>
+
+        {archivedChats.length > 0 && mode === "historial" && onRestoreArchived && (
+          <div className="mt-6 border-t border-zinc-700 pt-4">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Archivadas ({archivedChats.length})
+            </h3>
+            <p className="mt-1 text-[10px] leading-relaxed text-zinc-600">
+              Pulsa restaurar para volver a verlas en el historial principal.
+            </p>
+            <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto pr-1 scrollbar-thin">
+              {archivedChats.map((conv) => (
+                <li
+                  key={conv.id_conversacion}
+                  className="flex items-start gap-1 rounded-lg px-1 py-1.5 text-zinc-500 hover:bg-white/5"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onRestoreArchived(conv.id_conversacion)}
+                    className="rounded p-1 text-chat-gold hover:bg-white/10"
+                    aria-label="Restaurar conversacion archivada"
+                    title="Restaurar"
+                  >
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(conv.id_conversacion)}
+                    className="min-w-0 flex-1 text-left text-xs font-medium leading-tight text-zinc-400 hover:text-zinc-200"
+                  >
+                    <span className="querybot-history-title line-clamp-2">{conv.titulo}</span>
+                    <span className="mt-0.5 block text-[10px] text-zinc-600">{formatDate(conv.actualizada_en)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <button

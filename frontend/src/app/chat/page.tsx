@@ -17,6 +17,7 @@ import {
   type TemaChat,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 
 const COPY_TEMA: Record<string, string> = {
   matricula:
@@ -60,8 +61,7 @@ export default function ChatPage() {
   const [panelMode, setPanelMode] = useState<"documentos" | "historial">("historial");
   const [panelSearch, setPanelSearch] = useState("");
   const [temasPorConversacion, setTemasPorConversacion] = useState<Record<string, string>>({});
-  const [archivados, setArchivados] = useState<string[]>([]);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const { theme } = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const nombre = user?.nombre_completo?.split(" ")[0] || "estudiante";
@@ -83,15 +83,14 @@ export default function ChatPage() {
     : [mensajeTema ?? bienvenida];
   const temasBloqueados = Boolean(activa?.mensajes?.length);
   const canNewChat = temasBloqueados;
-  const conversacionesVisibles = conversaciones.filter(
-    (conv) => !archivados.includes(conv.id_conversacion),
-  );
-  const conversacionesArchivadas = conversaciones.filter((conv) =>
-    archivados.includes(conv.id_conversacion),
-  );
+  const conversacionesVisibles = conversaciones.filter((conv) => !conv.archivada);
+  const conversacionesArchivadas = conversaciones.filter((conv) => conv.archivada);
 
   const cargarConversaciones = useCallback(async () => {
     try {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("querybot_archived_chats");
+      }
       const lista = await api.get<Conversacion[]>("/chat/conversaciones");
       setConversaciones(lista);
     } catch {
@@ -118,17 +117,8 @@ export default function ChatPage() {
       cargarBaseChat();
       const stored = window.localStorage.getItem("querybot_temas_conversacion");
       if (stored) setTemasPorConversacion(JSON.parse(stored));
-      const storedArchived = window.localStorage.getItem("querybot_archived_chats");
-      if (storedArchived) setArchivados(JSON.parse(storedArchived));
-      const storedTheme = window.localStorage.getItem("querybot_theme") as "dark" | "light" | null;
-      if (storedTheme) setTheme(storedTheme);
     }
   }, [loadingUser, user, cargarConversaciones, cargarBaseChat]);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    window.localStorage.setItem("querybot_theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -184,29 +174,30 @@ export default function ChatPage() {
   const eliminar = async (id: string) => {
     await api.delete(`/chat/conversaciones/${id}`);
     if (activa?.id_conversacion === id) setActiva(null);
-    setArchivados((prev) => {
-      const next = prev.filter((x) => x !== id);
-      window.localStorage.setItem("querybot_archived_chats", JSON.stringify(next));
-      return next;
-    });
     await cargarConversaciones();
   };
 
-  const archivar = (id: string) => {
-    setArchivados((prev) => {
-      const next = Array.from(new Set([...prev, id]));
-      window.localStorage.setItem("querybot_archived_chats", JSON.stringify(next));
-      return next;
-    });
-    if (activa?.id_conversacion === id) setActiva(null);
+  const archivar = async (id: string) => {
+    try {
+      await api.patch<Conversacion>(`/chat/conversaciones/${id}`, { archivada: true });
+      setConversaciones((prev) =>
+        prev.map((c) => (c.id_conversacion === id ? { ...c, archivada: true } : c)),
+      );
+      if (activa?.id_conversacion === id) setActiva(null);
+    } catch {
+      /* noop */
+    }
   };
 
-  const restaurarArchivado = (id: string) => {
-    setArchivados((prev) => {
-      const next = prev.filter((x) => x !== id);
-      window.localStorage.setItem("querybot_archived_chats", JSON.stringify(next));
-      return next;
-    });
+  const restaurarArchivado = async (id: string) => {
+    try {
+      await api.patch<Conversacion>(`/chat/conversaciones/${id}`, { archivada: false });
+      setConversaciones((prev) =>
+        prev.map((c) => (c.id_conversacion === id ? { ...c, archivada: false } : c)),
+      );
+    } catch {
+      /* noop */
+    }
   };
 
   const exportarChats = () => {
@@ -226,9 +217,8 @@ export default function ChatPage() {
     setActiva(null);
     setConversaciones([]);
     setTemasPorConversacion({});
-    setArchivados([]);
     window.localStorage.removeItem("querybot_temas_conversacion");
-    window.localStorage.removeItem("querybot_archived_chats");
+    await cargarConversaciones();
   };
 
   const adjuntarArchivo = async (file: File) => {
@@ -351,9 +341,7 @@ export default function ChatPage() {
         onExportChats={exportarChats}
         onDeleteAllChats={eliminarTodosLosChats}
         canNewChat={canNewChat}
-        theme={theme}
         archivedChats={conversacionesArchivadas}
-        onThemeChange={setTheme}
         onSelectArchived={seleccionar}
         onRestoreArchived={restaurarArchivado}
         onNavigate={(mode) => {
@@ -416,6 +404,7 @@ export default function ChatPage() {
 
       <RightPanel
         conversaciones={conversacionesVisibles}
+        archivedChats={conversacionesArchivadas}
         documentos={documentos}
         activeId={activa?.id_conversacion ?? null}
         mode={panelMode}
@@ -425,6 +414,7 @@ export default function ChatPage() {
         onSelect={seleccionar}
         onNew={nuevoChat}
         onArchive={archivar}
+        onRestoreArchived={restaurarArchivado}
         onDelete={eliminar}
         onSearchChange={setPanelSearch}
       />

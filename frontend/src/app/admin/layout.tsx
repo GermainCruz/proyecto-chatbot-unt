@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -33,15 +34,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return <div className="grid h-screen place-items-center text-slate-500">Cargando…</div>;
+    return <div className="grid h-screen place-items-center text-qb-muted">Cargando…</div>;
   }
   if (user.rol !== "administrador") return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="hidden md:flex h-screen w-64 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <div className="p-4">
+      <aside className="hidden md:flex h-screen w-64 flex-col border-r border-qb-line bg-qb-surface">
+        <div className="flex items-center justify-between gap-2 p-4">
           <Logo />
+          <ThemeToggle variant="ghost" />
         </div>
         <nav className="px-2 flex-1 space-y-0.5">
           {NAV.map((n) => {
@@ -75,7 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto scrollbar-thin bg-slate-50 dark:bg-slate-950">
+      <main className="flex-1 overflow-y-auto scrollbar-thin bg-qb-bg">
         {children}
       </main>
     </div>

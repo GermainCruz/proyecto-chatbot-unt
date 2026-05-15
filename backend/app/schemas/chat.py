@@ -43,6 +43,10 @@ class NuevaConversacionIn(BaseModel):
     titulo: str | None = None
 
 
+class ActualizarConversacionIn(BaseModel):
+    archivada: bool | None = None
+
+
 class PreguntaIn(BaseModel):
     pregunta: str = Field(min_length=1, max_length=2000)
 

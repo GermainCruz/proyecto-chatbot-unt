@@ -17,6 +17,7 @@ import {
 
 import { type Conversacion } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
 
 // Coloca tu logo en `frontend/public/logoUNT.png` o cambia esta ruta por tu imagen.
@@ -34,9 +35,7 @@ type Props = {
   onExportChats?: () => void;
   onDeleteAllChats?: () => void;
   canNewChat?: boolean;
-  theme: "dark" | "light";
   archivedChats: Conversacion[];
-  onThemeChange: (theme: "dark" | "light") => void;
   onSelectArchived: (id: string) => void;
   onRestoreArchived: (id: string) => void;
 };
@@ -48,13 +47,12 @@ export function Sidebar({
   onExportChats,
   onDeleteAllChats,
   canNewChat,
-  theme,
   archivedChats,
-  onThemeChange,
   onSelectArchived,
   onRestoreArchived,
 }: Props) {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [logoError, setLogoError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -185,14 +183,14 @@ export function Sidebar({
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => onThemeChange("dark")}
+                  onClick={() => setTheme("dark")}
                   className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-xs", theme === "dark" ? "border-chat-gold text-chat-gold" : "border-zinc-700 text-zinc-300")}
                 >
                   <Moon className="h-4 w-4" /> {txt.dark}
                 </button>
                 <button
                   type="button"
-                  onClick={() => onThemeChange("light")}
+                  onClick={() => setTheme("light")}
                   className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-xs", theme === "light" ? "border-chat-gold text-chat-gold" : "border-zinc-700 text-zinc-300")}
                 >
                   <Sun className="h-4 w-4" /> {txt.light}

@@ -10,6 +10,7 @@ from app.models.conversacion import Conversacion, Mensaje
 from app.models.documento import CategoriaDocumento, Documento, FragmentoDocumento
 from app.models.usuario import Usuario
 from app.schemas.chat import (
+    ActualizarConversacionIn,
     ConversacionDetalleOut,
     ConversacionOut,
     DocumentoBaseOut,
@@ -131,6 +132,21 @@ def obtener_conversacion(
     user: Usuario = Depends(get_current_user),
 ):
     conv = _check_owner(db.get(Conversacion, conv_id), user)
+    return conv
+
+
+@router.patch("/conversaciones/{conv_id}", response_model=ConversacionOut)
+def actualizar_conversacion(
+    conv_id: UUID,
+    payload: ActualizarConversacionIn,
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    conv = _check_owner(db.get(Conversacion, conv_id), user)
+    if payload.archivada is not None:
+        conv.archivada = payload.archivada
+    db.commit()
+    db.refresh(conv)
     return conv
 
 

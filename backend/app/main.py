@@ -10,7 +10,7 @@ from app.api import auth as auth_router
 from app.api import chat as chat_router
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.models.usuario import Usuario
 
 
@@ -21,8 +21,15 @@ def _ensure_admin() -> None:
             select(Usuario).where(Usuario.correo == settings.ADMIN_EMAIL.lower())
         ).scalar_one_or_none()
         if existente:
+            changed = False
             if existente.rol != "administrador":
                 existente.rol = "administrador"
+                changed = True
+            if not verify_password(settings.ADMIN_PASSWORD, existente.contrasena_hash):
+                existente.contrasena_hash = hash_password(settings.ADMIN_PASSWORD)
+                changed = True
+                logger.info(f"Contraseña de admin sincronizada: {existente.correo}")
+            if changed:
                 db.commit()
             logger.info(f"Administrador presente: {existente.correo}")
             return

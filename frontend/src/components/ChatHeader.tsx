@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { type TemaChat } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +52,7 @@ export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }:
   const visibles = ordenados.length > 0 ? ordenados.slice(0, 6) : TEMAS_FALLBACK;
 
   return (
-    <header className="border-b border-chat-line bg-chat-shell px-5 py-4 text-white">
+    <header className="border-b border-chat-line bg-chat-shell px-5 py-4">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-zinc-700 bg-[#242422]">
@@ -76,6 +77,7 @@ export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }:
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <ThemeToggle variant="chat" className="mr-1" />
           <span className="mr-1 text-xs font-semibold text-zinc-400">Tema:</span>
           {visibles.map((tema) => {
             const active = selectedTema?.id_categoria === tema.id_categoria;

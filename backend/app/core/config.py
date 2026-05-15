@@ -17,13 +17,13 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     ALLOWED_EMAIL_DOMAIN: str = "unitru.edu.pe"
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     OPENAI_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
-    EMBEDDING_DIM: int = 1536
+    EMBEDDING_DIM: int = 768
 
     CHUNK_SIZE: int = 900
     CHUNK_OVERLAP: int = 150

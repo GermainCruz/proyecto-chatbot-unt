@@ -6,6 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 

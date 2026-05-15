@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -45,7 +46,10 @@ export default function LoginPage() {
         <p className="text-xs text-white/70">© Universidad Nacional de Trujillo</p>
       </div>
 
-      <div className="flex items-center justify-center p-6 sm:p-12">
+      <div className="relative flex items-center justify-center p-6 sm:p-12">
+        <div className="absolute right-4 top-4 z-10">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8">
             <Logo />

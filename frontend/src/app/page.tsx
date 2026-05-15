@@ -15,6 +15,7 @@ import {
 
 import { Carrusel } from "@/components/Carrusel";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const SABIAS_QUE = [
   "La UNT fue fundada el 10 de mayo de 1824 por el Libertador Simón Bolívar.",
@@ -33,10 +34,11 @@ const TEMAS = [
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur dark:bg-slate-950/80 dark:border-slate-800">
+      <header className="sticky top-0 z-30 border-b border-qb-line bg-qb-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Logo />
           <nav className="flex items-center gap-2">
+            <ThemeToggle variant="ghost" />
             <Link href="/login" className="btn-ghost">
               Iniciar sesión
             </Link>
@@ -167,7 +169,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-sm text-slate-500 dark:bg-slate-950 dark:border-slate-800">
+      <footer className="border-t border-qb-line bg-qb-surface py-6 text-center text-sm text-qb-muted">
         © {new Date().getFullYear()} QueryBot
       </footer>
     </div>

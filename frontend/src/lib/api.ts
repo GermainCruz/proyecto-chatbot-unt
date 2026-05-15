@@ -60,7 +60,16 @@ async function request<T>(
   const token = tokenStorage.getAccess();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  } catch {
+    throw new ApiError(
+      0,
+      null,
+      `No se pudo conectar con el backend (${API_URL}). Verifica que esté corriendo en el puerto 8000.`,
+    );
+  }
 
   if (res.status === 401 && retry) {
     const ok = await refreshTokens();

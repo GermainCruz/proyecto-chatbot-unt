@@ -34,7 +34,7 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
-      EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-768}
       ALLOWED_EMAIL_DOMAIN: unitru.edu.pe
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@unitru.edu.pe}
@@ -42,7 +42,6 @@ services:
       ADMIN_NAME: ${ADMIN_NAME:-Administrador UNT Bot}
     volumes:
       - untbot_storage:/app/storage
-      - ./.env:/app/.env
       - ./backend/app:/app/app
     ports:
       - "8000:8000"

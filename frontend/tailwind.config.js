@@ -5,13 +5,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        qb: {
+          bg: "rgb(var(--qb-bg) / <alpha-value>)",
+          surface: "rgb(var(--qb-surface) / <alpha-value>)",
+          elevated: "rgb(var(--qb-surface-elevated) / <alpha-value>)",
+          line: "rgb(var(--qb-border) / <alpha-value>)",
+          text: "rgb(var(--qb-text) / <alpha-value>)",
+          muted: "rgb(var(--qb-text-muted) / <alpha-value>)",
+          accent: "rgb(var(--qb-accent) / <alpha-value>)",
+        },
         chat: {
           primary: "#002570",
           primarySoft: "#0B3F9C",
           gold: "#D4960A",
-          shell: "#2D2D2B",
-          shellSoft: "#383836",
-          line: "#494946",
+          shell: "rgb(var(--qb-chat-shell) / <alpha-value>)",
+          panel: "rgb(var(--qb-chat-panel) / <alpha-value>)",
+          line: "rgb(var(--qb-chat-line) / <alpha-value>)",
         },
         unt: {
           blue: {
@@ -43,6 +52,7 @@ module.exports = {
       },
       boxShadow: {
         soft: "0 4px 24px -8px rgba(16, 62, 134, 0.18)",
+        "qb-dark": "0 1px 3px rgba(0, 0, 0, 0.35)",
       },
       animation: {
         "fade-in": "fadeIn 0.25s ease-out",

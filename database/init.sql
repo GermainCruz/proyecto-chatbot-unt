@@ -136,6 +136,17 @@ CREATE TABLE consultas_rag (
 );
 
 -- ============================================================
+-- CLAVES API LLM (Gemini / OpenAI gestionadas desde admin)
+-- ============================================================
+CREATE TABLE llm_api_keys (
+    id_api_key  BIGSERIAL PRIMARY KEY,
+    nombre      VARCHAR(100) NOT NULL,
+    clave       TEXT NOT NULL,
+    activa      BOOLEAN DEFAULT FALSE,
+    creada_en   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- AUDITORÍA ADMINISTRATIVA
 -- ============================================================
 CREATE TABLE auditoria (

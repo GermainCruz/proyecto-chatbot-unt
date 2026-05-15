@@ -28,10 +28,10 @@ export function Logo({ className }: { className?: string }) {
         )}
       </div>
       <div className="leading-tight">
-        <p className="text-base font-semibold tracking-tight text-unt-blue-900 dark:text-unt-blue-100">
+        <p className="text-base font-semibold tracking-tight text-qb-text">
           QueryBot
         </p>
-        <p className="text-[11px] uppercase tracking-wider text-unt-gold-600">
+        <p className="text-[11px] uppercase tracking-wider text-unt-gold-600 dark:text-unt-gold-400">
           Asistente academico documental
         </p>
       </div>
