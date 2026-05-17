@@ -20,9 +20,13 @@ out/
 dist/
 build/
 
-# Storage
+# Storage local temporal (no versionar)
 backend/storage/
+
+# PDFs: solo se versionan los de la carpeta compartida del equipo
 *.pdf
+!documentos/
+!documentos/**/*.pdf
 
 # Logs
 *.log

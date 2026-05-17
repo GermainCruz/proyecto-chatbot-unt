@@ -125,11 +125,15 @@ export default function AdminDocumentosPage() {
               onChange={(e) => setIdCategoria(e.target.value ? Number(e.target.value) : "")}
             >
               <option value="">— Sin categoría —</option>
-              {cats.map((c) => (
+              {[...cats]
+                .sort((a, b) =>
+                  (a.descripcion || a.nombre).localeCompare(b.descripcion || b.nombre, "es"),
+                )
+                .map((c) => (
                 <option key={c.id_categoria} value={c.id_categoria}>
-                  {c.nombre}
+                  {c.descripcion || c.nombre}
                 </option>
-              ))}
+                ))}
             </select>
           </div>
           <div>
@@ -230,7 +234,7 @@ export default function AdminDocumentosPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {d.categoria?.nombre || "—"}
+                      {d.categoria?.descripcion || d.categoria?.nombre || "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span

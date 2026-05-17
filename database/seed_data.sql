@@ -14,5 +14,9 @@ INSERT INTO categorias_documento (nombre, descripcion, icono) VALUES
   ('practicas',      'Prácticas preprofesionales',                 'Briefcase'),
   ('idiomas',        'Inglés y otros idiomas',                     'Languages'),
   ('cocurriculares', 'Cursos co-curriculares',                     'Award'),
-  ('general',        'Otros temas',                                'HelpCircle')
+  ('general',        'Otros temas',                                'HelpCircle'),
+  ('comedor_universitario', 'Postulación al comedor universitario',           'Utensils'),
+  ('carne_universitario_ura', 'Solicitud de carné universitario (URA)',     'IdCard'),
+  ('certificado_estudios_ura', 'Obtención de certificado de estudios (URA)', 'FileCheck'),
+  ('carpeta_ura', 'Elaboración de carpeta (URA)',                            'FolderOpen')
 ON CONFLICT (nombre) DO NOTHING;

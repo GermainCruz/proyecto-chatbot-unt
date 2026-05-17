@@ -12,16 +12,14 @@ from __future__ import annotations
 import hashlib
 import sys
 from pathlib import Path
-from uuid import uuid4
-
 from sqlalchemy import select
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.config import settings  # noqa: E402
 from app.core.database import SessionLocal  # noqa: E402
 from app.models.documento import Documento  # noqa: E402
 from app.services.rag import indexar_documento  # noqa: E402
+from app.services.storage import nombre_archivo_pdf, resolve_storage_dir  # noqa: E402
 
 
 def main(carpeta: str) -> None:
@@ -35,7 +33,7 @@ def main(carpeta: str) -> None:
         print("⚠️  No se encontraron PDFs en la carpeta.")
         return
 
-    storage = Path(settings.STORAGE_DIR)
+    storage = resolve_storage_dir()
     storage.mkdir(parents=True, exist_ok=True)
 
     db = SessionLocal()
@@ -52,7 +50,7 @@ def main(carpeta: str) -> None:
                 print(f"   ↪ Ya existe en BD (id={existente.id_documento}), reindexando…")
                 doc = existente
             else:
-                destino = storage / f"{uuid4().hex}.pdf"
+                destino = storage / nombre_archivo_pdf(pdf.name, pdf.stem.replace("_", " "))
                 destino.write_bytes(data)
                 doc = Documento(
                     titulo=pdf.stem.replace("_", " ")[:300],

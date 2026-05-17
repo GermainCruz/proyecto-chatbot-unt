@@ -1,5 +1,12 @@
 from functools import lru_cache
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _default_storage_dir() -> str:
+    root = Path(__file__).resolve().parents[3]
+    return str(root / "documentos")
 
 
 class Settings(BaseSettings):
@@ -30,7 +37,7 @@ class Settings(BaseSettings):
     TOP_K: int = 6
     SCORE_THRESHOLD: float = 0.45
 
-    STORAGE_DIR: str = "/app/storage/pdfs"
+    STORAGE_DIR: str = _default_storage_dir()
     MAX_PDF_MB: int = 25
 
     ADMIN_EMAIL: str = "admin@unitru.edu.pe"

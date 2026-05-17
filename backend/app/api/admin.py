@@ -3,8 +3,6 @@ from __future__ import annotations
 import hashlib
 import shutil
 from pathlib import Path
-from uuid import uuid4
-
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from loguru import logger
 from sqlalchemy import func, select
@@ -24,6 +22,7 @@ from app.schemas.documento import (
     UsuarioUpdateIn,
 )
 from app.services.rag import indexar_documento
+from app.services.storage import nombre_archivo_pdf, resolve_storage_dir
 from dotenv import set_key
 from app.models.api_key import ApiKey
 from app.schemas.api_key import ApiKeyCreate, ApiKeyOut
@@ -100,9 +99,9 @@ def subir_documento(
     if not archivo.filename or not archivo.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo debe tener extensión .pdf")
 
-    storage = Path(settings.STORAGE_DIR)
+    storage = resolve_storage_dir()
     storage.mkdir(parents=True, exist_ok=True)
-    ruta = storage / f"{uuid4().hex}.pdf"
+    ruta = storage / nombre_archivo_pdf(archivo.filename, titulo)
 
     sha = hashlib.sha256()
     tamano = 0

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.documento import Documento, FragmentoDocumento
 from app.services.embeddings import embed_text, embed_texts
+from app.services.academic_guard import evaluar_alcance_academico
 from app.services.llm import generar_respuesta, generar_titulo_conversacion
 from app.services.pdf_loader import chunkear_pdf
 
@@ -101,6 +102,21 @@ def responder_pregunta(
 ) -> dict:
     """Pipeline RAG completo. Devuelve dict con respuesta, fuentes y métricas."""
     inicio = time.time()
+
+    alcance = evaluar_alcance_academico(pregunta)
+    if not alcance.permitida:
+        latencia_ms = int((time.time() - inicio) * 1000)
+        return {
+            "contenido": alcance.mensaje,
+            "fuentes": [],
+            "tokens_entrada": 0,
+            "tokens_salida": 0,
+            "latencia_ms": latencia_ms,
+            "modelo_llm": settings.LLM_MODEL,
+            "fragmentos_ids": [],
+            "scores": [],
+        }
+
     fragmentos = buscar_fragmentos(db, pregunta)
 
     fragmentos_filtrados = [

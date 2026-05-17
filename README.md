@@ -47,6 +47,7 @@ proyecto-chatbot-unt/
 │   │   └── styles/
 │   ├── Dockerfile
 │   └── package.json
+├── documentos/             # PDFs oficiales (versionables en Git para el equipo)
 ├── database/
 │   ├── init.sql            # Esquema completo (usuarios, chat, RAG)
 │   └── seed_data.sql       # Categorías iniciales
@@ -92,12 +93,24 @@ Se crea automáticamente al iniciar el backend con los valores de `.env`:
 
 > Cambia estas credenciales en `.env` antes del primer arranque o desde el panel admin después.
 
+## 📁 ¿Dónde se guardan los PDFs?
+
+Al adjuntar o subir un PDF (chat de admin o **Panel admin → Documentos**), el archivo se guarda en la carpeta **`documentos/`** en la raíz del proyecto (nombres legibles, por ejemplo `guia-matricula_a1b2c3d4.pdf`). Los metadatos y los fragmentos vectoriales quedan en PostgreSQL.
+
+Esa carpeta está pensada para **versionarse en Git**: tus compañeros verán los mismos archivos al clonar el repositorio. También puedes copiar PDFs directamente en `documentos/` y ejecutar:
+
+```bash
+docker compose exec backend python -m scripts.load_documents /app/documentos
+```
+
+> Los PDFs subidos **antes** de este cambio podían estar solo en el volumen Docker `untbot_storage` y no en el repo. Vuelve a subirlos o cópialos a `documentos/` si los necesitas en GitHub.
+
 ## 🧪 Flujo de uso
 
 1. Ingresa como **administrador** en `/login`.
 2. Ve a **Panel admin → Documentos** y sube uno o más PDFs oficiales (sílabos, reglamentos, guías…). El sistema los indexa automáticamente (estado pasa de `pendiente` → `procesando` → `indexado`).
 3. Cierra sesión y **regístrate como estudiante** con un correo `@unitru.edu.pe`.
-4. Haz preguntas en el chat. UNT Bot recupera fragmentos relevantes y responde citando las fuentes.
+4. Haz preguntas en el chat. QueryBot solo atiende temas **académicos y universitarios**; ante consultas ajenas (por ejemplo historia general) responde cordialmente que no está diseñado para ello.
 
 ## 🛠️ Comandos para arrancar el app (desarrollo local)
 
@@ -122,7 +135,7 @@ npm run dev
 ### Carga masiva por CLI (opcional)
 
 ```bash
-docker compose exec backend python -m scripts.load_documents /ruta/dentro/del/contenedor
+docker compose exec backend python -m scripts.load_documents /app/documentos
 ```
 
 ## 🔌 Endpoints principales
@@ -221,32 +234,3 @@ npm run dev
 ## 📄 Licencia
 
 Proyecto académico — Universidad Nacional de Trujillo, curso de Gestión de Servicios de TI.
--------------------------------------------------------------------
-#aqui
-
-## 🧪 Flujo de uso
-
-1. Ingresa como **administrador** en `/login`.
-2. Ve a **Panel admin → Documentos** y sube uno o más PDFs oficiales (sílabos, reglamentos, guías…). El sistema los indexa automáticamente (estado pasa de `pendiente` → `procesando` → `indexado`).
-3. Cierra sesión y **regístrate como estudiante** con un correo `@unitru.edu.pe`.
-4. Haz preguntas en el chat. UNT Bot recupera fragmentos relevantes y responde citando las fuentes.
-
-## 🛠️ Comandos para arrancar el app (desarrollo local)
-
-Si prefieres ejecutar frontend y backend por separado sin Docker:
-
-### Backend (FastAPI)
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate  # En Windows
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Frontend (Next.js)
-```bash
-cd frontend
-npm install
-npm run dev
-```

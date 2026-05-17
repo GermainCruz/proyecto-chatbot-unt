@@ -8,10 +8,23 @@ from sqlalchemy import select
 from app.api import admin as admin_router
 from app.api import auth as auth_router
 from app.api import chat as chat_router
+from app.core.categorias_seed import sincronizar_categorias_documento
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.security import hash_password, verify_password
 from app.models.usuario import Usuario
+
+
+def _ensure_categorias() -> None:
+    db = SessionLocal()
+    try:
+        sincronizar_categorias_documento(db)
+        logger.info("Categorías de documentos sincronizadas")
+    except Exception as exc:
+        logger.error(f"No se pudieron sincronizar categorías: {exc}")
+        db.rollback()
+    finally:
+        db.close()
 
 
 def _ensure_admin() -> None:
@@ -49,6 +62,7 @@ def _ensure_admin() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    _ensure_categorias()
     try:
         _ensure_admin()
     except Exception as exc:

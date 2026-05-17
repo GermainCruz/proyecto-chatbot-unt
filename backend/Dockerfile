@@ -17,7 +17,7 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/storage/pdfs
+RUN mkdir -p /app/documentos
 
 EXPOSE 8000
 
