@@ -10,10 +10,21 @@ from app.core.config import settings
 
 _openai_client: OpenAI | None = None
 
+_PLACEHOLDER_MARKERS = ("tu_api", "your_api", "api_key_aqui", "changeme", "example")
+
+
+def _is_usable_api_key(key: str | None) -> bool:
+    if not key or not key.strip():
+        return False
+    lower = key.strip().lower()
+    if len(lower) < 20:
+        return False
+    return not any(marker in lower for marker in _PLACEHOLDER_MARKERS)
+
 
 def _get_openai_client() -> OpenAI | None:
     global _openai_client
-    if not settings.OPENAI_API_KEY:
+    if not _is_usable_api_key(settings.OPENAI_API_KEY):
         return None
     if _openai_client is None:
         _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -21,7 +32,7 @@ def _get_openai_client() -> OpenAI | None:
 
 
 def _get_gemini_embeddings(texts: list[str]) -> list[list[float]] | None:
-    if not settings.GOOGLE_API_KEY:
+    if not _is_usable_api_key(settings.GOOGLE_API_KEY):
         return None
     try:
         genai.configure(api_key=settings.GOOGLE_API_KEY)
@@ -67,10 +78,13 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     # 2. Intentar con OpenAI
     openai_client = _get_openai_client()
     if openai_client is not None:
-        resp = openai_client.embeddings.create(model=settings.EMBEDDING_MODEL, input=texts)
-        return [d.embedding for d in resp.data]
+        try:
+            resp = openai_client.embeddings.create(model=settings.EMBEDDING_MODEL, input=texts)
+            return [d.embedding for d in resp.data]
+        except Exception:
+            pass
 
-    # 3. Fallback
+    # 3. Fallback (modo demo sin API keys válidas)
     return [_fallback_embedding(t, settings.EMBEDDING_DIM) for t in texts]
 
 

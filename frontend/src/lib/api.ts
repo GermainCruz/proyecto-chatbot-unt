@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+/** En desarrollo usa /api (proxy Next.js → backend) para evitar CORS y conflictos de puerto. */
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 const ACCESS_KEY = "untbot_access";
 const REFRESH_KEY = "untbot_refresh";
@@ -67,7 +68,8 @@ async function request<T>(
     throw new ApiError(
       0,
       null,
-      `No se pudo conectar con el backend (${API_URL}). Verifica que esté corriendo en el puerto 8000.`,
+      `No se pudo conectar con el backend (${API_URL}). ` +
+        "Verifica que uvicorn esté activo en el puerto 8000 y reinicia el frontend (npm run dev) tras cambiar .env.",
     );
   }
 

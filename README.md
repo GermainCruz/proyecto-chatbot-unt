@@ -81,7 +81,7 @@ Servicios disponibles:
 | Frontend  | http://localhost:3000                  |
 | Backend   | http://localhost:8000                  |
 | API docs  | http://localhost:8000/docs             |
-| PostgreSQL| `localhost:5432` (user/pass `untbot`)  |
+| PostgreSQL| `localhost:5433` (user/pass `untbot`)  |
 
 ### 👤 Usuario administrador inicial
 
@@ -200,7 +200,9 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-# Asegúrate de tener Postgres corriendo y haber ejecutado init.sql + seed_data.sql
+# Solo la BD en Docker (puerto 5433 para no chocar con PostgreSQL de Windows en 5432):
+docker compose up -d db
+# En .env: DATABASE_URL=postgresql+psycopg://untbot:untbot@localhost:5433/untbot
 uvicorn app.main:app --reload
 ```
 

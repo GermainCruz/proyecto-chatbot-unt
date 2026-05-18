@@ -6,8 +6,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { type TemaChat } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Coloca una imagen decorativa o mascota en `frontend/public/querybot-header.png`.
-const HEADER_IMAGE_SRC = "/querybot-header.png";
+// SVG incluido en public/; opcionalmente reemplaza por querybot-header.png
+const HEADER_IMAGE_SRC = "/querybot-header.svg";
 
 const TEMAS_FALLBACK: TemaChat[] = [
   { id_categoria: 1, nombre: "matricula", descripcion: "Procesos de matricula", documentos_count: 0 },

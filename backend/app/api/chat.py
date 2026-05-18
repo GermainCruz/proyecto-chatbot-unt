@@ -186,7 +186,22 @@ def enviar_mensaje(
         except Exception:
             db.rollback()
 
-    resultado = responder_pregunta(db, payload.pregunta)
+    mensajes_previos = db.execute(
+        select(Mensaje)
+        .where(
+            Mensaje.id_conversacion == conv.id_conversacion,
+            Mensaje.id_mensaje != msg_user.id_mensaje,
+        )
+        .order_by(Mensaje.creado_en)
+    ).scalars().all()
+    historial = [{"rol": m.rol, "contenido": m.contenido} for m in mensajes_previos]
+    try:
+        resultado = responder_pregunta(db, payload.pregunta, historial_mensajes=historial)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se pudo procesar la pregunta: {exc}",
+        ) from exc
 
     msg_asis = Mensaje(
         id_conversacion=conv.id_conversacion,

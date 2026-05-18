@@ -16,8 +16,7 @@ CREATE TYPE rol_usuario AS ENUM ('estudiante', 'administrador');
 CREATE TABLE usuarios (
     id_usuario        BIGSERIAL PRIMARY KEY,
     nombre_completo   VARCHAR(150) NOT NULL,
-    correo            VARCHAR(120) NOT NULL UNIQUE
-                      CHECK (correo ~* '^[a-z0-9._%+\-]+@unitru\.edu\.pe$'),
+    correo            VARCHAR(120) NOT NULL UNIQUE,
     contrasena_hash   VARCHAR(255) NOT NULL,
     rol               rol_usuario NOT NULL DEFAULT 'estudiante',
     avatar_url        TEXT,

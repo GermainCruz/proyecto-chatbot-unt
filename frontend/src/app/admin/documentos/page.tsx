@@ -31,6 +31,7 @@ export default function AdminDocumentosPage() {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [idCategoria, setIdCategoria] = useState<number | "">("");
+  const [confirmarEliminar, setConfirmarEliminar] = useState<number | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -85,7 +86,7 @@ export default function AdminDocumentosPage() {
   };
 
   const eliminar = async (id: number) => {
-    if (!confirm("¿Eliminar este documento? Se borrarán también sus fragmentos.")) return;
+    setConfirmarEliminar(null);
     await api.delete(`/admin/documentos/${id}`);
     cargar();
   };
@@ -256,7 +257,7 @@ export default function AdminDocumentosPage() {
                           <RefreshCw className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => eliminar(d.id_documento)}
+                          onClick={() => setConfirmarEliminar(d.id_documento)}
                           className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
                           title="Eliminar"
                         >
@@ -271,6 +272,39 @@ export default function AdminDocumentosPage() {
           </table>
         </div>
       </section>
+
+      {/* Modal de Confirmación */}
+      {confirmarEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="card w-full max-w-md p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-4 text-red-600">
+              <div className="p-3 bg-red-50 rounded-full dark:bg-red-900/20">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-bold">¿Eliminar documento?</h3>
+            </div>
+            
+            <p className="text-slate-600 dark:text-slate-400">
+              Esta acción es irreversible. Se borrarán permanentemente el archivo y todos los fragmentos indexados en la base de datos.
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setConfirmarEliminar(null)}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-50 transition dark:border-slate-700 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => eliminar(confirmarEliminar)}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition shadow-lg shadow-red-600/20"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Bot } from "lucide-react";
 
 import { CajaPregunta } from "@/components/CajaPregunta";
 import { ChatHeader } from "@/components/ChatHeader";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MensajeBurbuja } from "@/components/MensajeBurbuja";
 import { RightPanel } from "@/components/RightPanel";
 import { Sidebar } from "@/components/Sidebar";
@@ -37,7 +38,9 @@ function normalizarTema(nombre: string) {
     .toLowerCase();
 }
 
-function crearMensajeUI(contenido: string): Mensaje {
+type MensajeUI = Mensaje & { variant?: "normal" | "error" };
+
+function crearMensajeUI(contenido: string, variant: "normal" | "error" = "normal"): MensajeUI {
   return {
     id_mensaje: -Date.now(),
     rol: "assistant",
@@ -45,6 +48,7 @@ function crearMensajeUI(contenido: string): Mensaje {
     fuentes: null,
     util: null,
     creado_en: new Date().toISOString(),
+    variant,
   };
 }
 
@@ -61,6 +65,7 @@ export default function ChatPage() {
   const [panelMode, setPanelMode] = useState<"documentos" | "historial">("historial");
   const [panelSearch, setPanelSearch] = useState("");
   const [temasPorConversacion, setTemasPorConversacion] = useState<Record<string, string>>({});
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const { theme } = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -212,7 +217,6 @@ export default function ChatPage() {
   };
 
   const eliminarTodosLosChats = async () => {
-    if (!confirm("Eliminar todos los chats del historial?")) return;
     await Promise.all(conversaciones.map((conv) => api.delete(`/chat/conversaciones/${conv.id_conversacion}`)));
     setActiva(null);
     setConversaciones([]);
@@ -303,18 +307,16 @@ export default function ChatPage() {
       );
       setActiva(detalle);
       cargarConversaciones();
-    } catch {
-      const errorMsg: Mensaje = {
-        id_mensaje: -Date.now(),
-        rol: "assistant",
-        contenido:
-          "Ocurrio un error al procesar tu pregunta. Intenta nuevamente en unos segundos.",
-        fuentes: null,
-        util: null,
-        creado_en: new Date().toISOString(),
-      };
+    } catch (err) {
+      const detalle =
+        err instanceof Error ? err.message : "Error de conexion con el servidor.";
+      const errorMsg = crearMensajeUI(
+        `**No pude procesar tu pregunta**\n\n${detalle}\n\n` +
+          "Comprueba que el backend este activo y que las API keys en `.env` sean validas (o deja el modo demo).",
+        "error",
+      );
       setActiva((prev) =>
-        prev ? { ...prev, mensajes: [...prev.mensajes, errorMsg] } : prev,
+        prev ? { ...prev, mensajes: [...(prev.mensajes ?? []), errorMsg] } : prev,
       );
     } finally {
       setEnviando(false);
@@ -339,7 +341,7 @@ export default function ChatPage() {
         onDelete={eliminar}
         onRefresh={cargarConversaciones}
         onExportChats={exportarChats}
-        onDeleteAllChats={eliminarTodosLosChats}
+        onDeleteAllChats={() => setConfirmDeleteAll(true)}
         canNewChat={canNewChat}
         archivedChats={conversacionesArchivadas}
         onSelectArchived={seleccionar}
@@ -368,7 +370,11 @@ export default function ChatPage() {
 
             <div className="flex-1 space-y-4">
               {mensajes.map((m) => (
-                <MensajeBurbuja key={m.id_mensaje} mensaje={m} />
+                <MensajeBurbuja
+                  key={m.id_mensaje}
+                  mensaje={m}
+                  variant={(m as MensajeUI).variant ?? "normal"}
+                />
               ))}
 
               {enviando && (
@@ -417,6 +423,17 @@ export default function ChatPage() {
         onRestoreArchived={restaurarArchivado}
         onDelete={eliminar}
         onSearchChange={setPanelSearch}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteAll}
+        title="¿Eliminar todos los chats?"
+        description="Se borraran todas las conversaciones del historial. Esta accion no se puede deshacer."
+        confirmLabel="Si, eliminar todos"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={eliminarTodosLosChats}
+        onCancel={() => setConfirmDeleteAll(false)}
       />
     </div>
   );

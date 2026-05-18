@@ -49,7 +49,7 @@ export default function AdminUsuariosPage() {
           Usuarios registrados
         </h1>
         <p className="text-sm text-slate-500">
-          Gestiona roles y estado de las cuentas <strong>@unitru.edu.pe</strong>.
+          Gestiona roles y estado de las cuentas de usuario.
         </p>
       </header>
 

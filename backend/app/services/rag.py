@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -10,8 +11,15 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.documento import Documento, FragmentoDocumento
 from app.services.embeddings import embed_text, embed_texts
+from app.services.conversation import (
+    detectar_intencion,
+    expandir_consulta,
+    formatear_historial,
+    normalizar_pregunta,
+)
 from app.services.llm import generar_respuesta, generar_titulo_conversacion
 from app.services.pdf_loader import chunkear_pdf
+from app.services.rag_filter import seleccionar_fragmentos
 
 
 def indexar_documento(db: Session, documento: Documento) -> tuple[int, str | None]:
@@ -98,39 +106,122 @@ def buscar_fragmentos(db: Session, pregunta: str, top_k: int | None = None) -> l
 def responder_pregunta(
     db: Session,
     pregunta: str,
+    historial_mensajes: list[dict] | None = None,
 ) -> dict:
     """Pipeline RAG completo. Devuelve dict con respuesta, fuentes y métricas."""
     inicio = time.time()
-    fragmentos = buscar_fragmentos(db, pregunta)
+    try:
+        pregunta_norm, sugerencia_typo = normalizar_pregunta(pregunta)
+        intent = detectar_intencion(pregunta_norm)
+        historial = formatear_historial(historial_mensajes or [])
 
-    fragmentos_filtrados = [
-        f for f in fragmentos if (f.get("score") or 0) >= settings.SCORE_THRESHOLD
-    ]
+        # Si es un saludo corto, responder directamente sin búsqueda RAG
+        if intent == "saludo" and len(pregunta_norm.split()) <= 3:
+            respuesta, t_in, t_out = generar_respuesta(
+                pregunta_norm,
+                [],
+                historial=historial,
+                intent=intent,
+                sugerencia_typo=sugerencia_typo,
+            )
+            return {
+                "contenido": respuesta,
+                "fuentes": [],
+                "tokens_entrada": t_in,
+                "tokens_salida": t_out,
+                "latencia_ms": int((time.time() - inicio) * 1000),
+                "modelo_llm": settings.LLM_MODEL,
+                "fragmentos_ids": [],
+                "scores": [],
+            }
 
-    contexto = fragmentos_filtrados or []
-    respuesta, t_in, t_out = generar_respuesta(pregunta, contexto)
-    latencia_ms = int((time.time() - inicio) * 1000)
+        # Búsqueda inicial con pregunta normalizada
+        fragmentos = buscar_fragmentos(db, pregunta_norm)
+        candidatos = [f for f in fragmentos if (f.get("score") or 0) >= settings.SCORE_THRESHOLD]
 
-    fuentes = [
-        {
-            "id_fragmento": f["id_fragmento"],
-            "titulo": f["titulo"],
-            "pagina": (f.get("metadatos") or {}).get("pagina"),
-            "score": round(float(f["score"]), 4),
+        para_llm, para_fuentes = seleccionar_fragmentos(
+            pregunta_norm,
+            candidatos,
+            max_para_llm=settings.RAG_MAX_FRAGMENTOS_LLM,
+            max_fuentes=settings.RAG_MAX_FUENTES,
+            min_rank=settings.RAG_MIN_RANK,
+        )
+
+        # RETRY LOGIC: Si no hay resultados, intentar con expansión de consulta
+        if not para_llm:
+            pregunta_exp = expandir_consulta(pregunta_norm)
+            if pregunta_exp != pregunta_norm:
+                fragmentos_exp = buscar_fragmentos(db, pregunta_exp)
+                candidatos_exp = [f for f in fragmentos_exp if (f.get("score") or 0) >= settings.SCORE_THRESHOLD]
+                
+                para_llm_exp, para_fuentes_exp = seleccionar_fragmentos(
+                    pregunta_exp,
+                    candidatos_exp,
+                    max_para_llm=settings.RAG_MAX_FRAGMENTOS_LLM,
+                    max_fuentes=settings.RAG_MAX_FUENTES,
+                    min_rank=settings.RAG_MIN_RANK,
+                )
+                if para_llm_exp:
+                    para_llm, para_fuentes = para_llm_exp, para_fuentes_exp
+
+        # Si aún no hay fragmentos relevantes, responder con mensaje de disculpa
+        if not para_llm:
+            msg = "Disculpa, no cuento con información oficial detallada sobre este tema específico en mis documentos actuales. Próximamente estaremos actualizando esta información."
+            if sugerencia_typo:
+                msg = f"{sugerencia_typo}\n\n{msg}"
+            return {
+                "contenido": msg,
+                "fuentes": [],
+                "tokens_entrada": 0,
+                "tokens_salida": 0,
+                "latencia_ms": int((time.time() - inicio) * 1000),
+                "modelo_llm": settings.LLM_MODEL,
+                "fragmentos_ids": [],
+                "scores": [],
+            }
+
+        respuesta, t_in, t_out = generar_respuesta(
+            pregunta_norm,
+            para_llm,
+            historial=historial,
+            intent=intent,
+            sugerencia_typo=sugerencia_typo,
+        )
+        latencia_ms = int((time.time() - inicio) * 1000)
+
+        fuentes = [
+            {
+                "id_fragmento": f["id_fragmento"],
+                "titulo": f["titulo"],
+                "pagina": (f.get("metadatos") or {}).get("pagina"),
+                "score": round(float(f.get("_rank", f.get("score", 0))), 4),
+            }
+            for f in para_fuentes
+        ]
+
+        return {
+            "contenido": respuesta,
+            "fuentes": fuentes,
+            "tokens_entrada": t_in,
+            "tokens_salida": t_out,
+            "latencia_ms": latencia_ms,
+            "modelo_llm": settings.LLM_MODEL,
+            "fragmentos_ids": [f["id_fragmento"] for f in para_llm],
+            "scores": [round(float(f.get("_rank", f.get("score", 0))), 4) for f in para_llm],
         }
-        for f in contexto
-    ]
-
-    return {
-        "contenido": respuesta,
-        "fuentes": fuentes,
-        "tokens_entrada": t_in,
-        "tokens_salida": t_out,
-        "latencia_ms": latencia_ms,
-        "modelo_llm": settings.LLM_MODEL,
-        "fragmentos_ids": [f["id_fragmento"] for f in contexto],
-        "scores": [round(float(f["score"]), 4) for f in contexto],
-    }
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"Error interno en responder_pregunta: {str(e)}")
+        return {
+            "contenido": "Lo siento, ocurrió un error interno al procesar tu consulta. Por favor, intenta de nuevo más tarde.",
+            "fuentes": [],
+            "tokens_entrada": 0,
+            "tokens_salida": 0,
+            "latencia_ms": int((time.time() - inicio) * 1000),
+            "modelo_llm": settings.LLM_MODEL,
+            "fragmentos_ids": [],
+            "scores": [],
+        }
 
 
 def titulo_para_conversacion(pregunta: str) -> str:

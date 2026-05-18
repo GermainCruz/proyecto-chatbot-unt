@@ -10,12 +10,18 @@ class RegistroIn(BaseModel):
     correo: EmailStr
     password: str = Field(min_length=8, max_length=72)
 
+    @field_validator("password")
+    @classmethod
+    def validar_password(cls, v: str) -> str:
+        if not any(c.isupper() for c in v):
+            raise ValueError("La contraseña debe incluir al menos una mayúscula")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("La contraseña debe incluir al menos un número")
+        return v
+
     @field_validator("correo")
     @classmethod
-    def validar_dominio(cls, v: str) -> str:
-        domain = settings.ALLOWED_EMAIL_DOMAIN
-        if not re.match(rf"^[a-zA-Z0-9._%+-]+@{re.escape(domain)}$", v):
-            raise ValueError(f"El correo debe pertenecer al dominio @{domain}")
+    def normalize_email(cls, v: str) -> str:
         return v.lower()
 
 

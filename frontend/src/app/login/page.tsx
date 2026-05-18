@@ -40,7 +40,7 @@ export default function LoginPage() {
             QueryBot, tu asistente academico documental.
           </h2>
           <p className="text-white/80">
-            Inicia sesion con tu correo institucional para acceder a QueryBot.
+            Inicia sesión para acceder a QueryBot.
           </p>
         </div>
         <p className="text-xs text-white/70">© Universidad Nacional de Trujillo</p>
@@ -57,18 +57,15 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-unt-blue-900 dark:text-unt-blue-100">
             Iniciar sesión
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Usa tu correo <strong>@unitru.edu.pe</strong>.
-          </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
-              <label className="label" htmlFor="correo">Correo institucional</label>
+              <label className="label" htmlFor="correo">Correo electrónico</label>
               <input
                 id="correo"
                 type="email"
                 required
-                placeholder="usuario@unitru.edu.pe"
+                placeholder="usuario@gmail.com"
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 className="input"

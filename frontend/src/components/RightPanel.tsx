@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -10,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { type Conversacion, type DocumentoBase } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -46,6 +48,8 @@ export function RightPanel({
   onDelete,
   onSearchChange,
 }: Props) {
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
   const historial = conversaciones.filter((conv) =>
     conv.titulo.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -141,9 +145,7 @@ export function RightPanel({
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (confirm("Eliminar conversacion?")) onDelete(conv.id_conversacion);
-                    }}
+                    onClick={() => setDeleteTarget(conv.id_conversacion)}
                     className="rounded p-1 text-zinc-500 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
                     aria-label="Eliminar conversacion"
                   >
@@ -202,6 +204,19 @@ export function RightPanel({
         <Plus className="h-4 w-4" />
         Nuevo chat
       </button>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="¿Eliminar conversación?"
+        description="Se borrarán todos los mensajes de este chat. Esta acción no se puede deshacer."
+        confirmLabel="Sí, eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={() => {
+          if (deleteTarget) onDelete(deleteTarget);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </aside>
   );
 }
