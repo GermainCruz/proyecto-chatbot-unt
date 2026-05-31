@@ -56,6 +56,7 @@ def _to_documento_out(db: Session, doc: Documento) -> DocumentoOut:
         estado=doc.estado,
         error_mensaje=doc.error_mensaje,
         tamano_bytes=doc.tamano_bytes,
+        palabras_clave=doc.palabras_clave,
         fecha_subida=doc.fecha_subida,
         fecha_indexado=doc.fecha_indexado,
         categoria=CategoriaOut.model_validate(doc.categoria) if doc.categoria else None,
@@ -92,6 +93,7 @@ def subir_documento(
     titulo: str = Form(...),
     id_categoria: int | None = Form(None),
     descripcion: str | None = Form(None),
+    palabras_clave: str | None = Form(None),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
@@ -134,6 +136,7 @@ def subir_documento(
         ruta_archivo=str(ruta),
         hash_archivo=hash_archivo,
         tamano_bytes=tamano,
+        palabras_clave=palabras_clave,
         estado="pendiente",
         subido_por=admin.id_usuario,
     )
@@ -228,6 +231,7 @@ def metricas(
     total_msg = db.scalar(select(func.count(Mensaje.id_mensaje))) or 0
     msg_pos = db.scalar(select(func.count()).where(Mensaje.util == 1)) or 0
     msg_neg = db.scalar(select(func.count()).where(Mensaje.util == -1)) or 0
+    vacios = db.scalar(select(func.count()).where(Mensaje.contenido.ilike("%aún no cuento con información específica%"))) or 0
 
     return MetricasOut(
         total_usuarios=int(total_users),
@@ -240,6 +244,7 @@ def metricas(
         total_mensajes=int(total_msg),
         mensajes_utiles=int(msg_pos),
         mensajes_no_utiles=int(msg_neg),
+        vacios_conocimiento=int(vacios),
     )
 
 

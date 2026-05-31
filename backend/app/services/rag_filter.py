@@ -15,11 +15,11 @@ _STOPWORDS = frozenset(
 _SINONIMOS: dict[str, list[str]] = {
     "gimnasio": ["gimnasio", "gym", "gymnasio", "deporte", "ejercicio", "entrenamiento", "pesas", "alfonso ugarte", "jirón trujillo"],
     "horario": ["horario", "horarios", "hora", "horas", "atiende", "apertura", "cierre", "turno", "cuando abre", "que hora", "mañana", "tarde"],
-    "requisito": ["requisito", "requisitos", "documento", "documentos", "necesito", "papeles", "checklist", "que llevar", "estudiante vigente", "carné", "constancia"],
-    "comedor": ["comedor", "alimentacion", "comida", "cafeteria", "almuerzo", "cena", "nutricion"],
+    "requisito": ["requisito", "requisitos", "documento", "documentos", "necesito", "papeles", "checklist", "que llevar", "estudiante vigente", "carné", "constancia", "condiciones", "previas"],
+    "comedor": ["comedor", "alimentacion", "comida", "cafeteria", "almuerzo", "cena", "nutricion", "postulacion comedor", "comedor universitario", "ticket", "bandeja"],
     "matricula": ["matricula", "matricular", "inscripcion", "registro", "ingreso"],
     "silabo": ["silabo", "syllabus", "plan de estudios", "malla curricular", "cursos", "asignaturas", "malla"],
-    "bienestar": ["bienestar", "social", "ayuda", "servicio social", "asistencia"],
+    "bienestar": ["bienestar", "social", "ayuda", "servicio social", "asistencia", "asistenta"],
 }
 
 

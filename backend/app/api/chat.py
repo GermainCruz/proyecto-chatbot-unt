@@ -196,7 +196,12 @@ def enviar_mensaje(
     ).scalars().all()
     historial = [{"rol": m.rol, "contenido": m.contenido} for m in mensajes_previos]
     try:
-        resultado = responder_pregunta(db, payload.pregunta, historial_mensajes=historial)
+        resultado = responder_pregunta(
+            db,
+            payload.pregunta,
+            historial_mensajes=historial,
+            id_categoria=payload.id_categoria,
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=503,

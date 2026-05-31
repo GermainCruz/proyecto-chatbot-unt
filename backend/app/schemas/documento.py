@@ -21,6 +21,7 @@ class DocumentoOut(BaseModel):
     estado: str
     error_mensaje: str | None = None
     tamano_bytes: int | None = None
+    palabras_clave: str | None = None
     fecha_subida: datetime
     fecha_indexado: datetime | None = None
     categoria: CategoriaOut | None = None
@@ -60,3 +61,4 @@ class MetricasOut(BaseModel):
     total_mensajes: int
     mensajes_utiles: int
     mensajes_no_utiles: int
+    vacios_conocimiento: int = 0

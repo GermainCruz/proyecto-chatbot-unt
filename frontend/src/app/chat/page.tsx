@@ -300,7 +300,10 @@ export default function ChatPage() {
         contenido: string;
         fuentes: { id_fragmento: number; titulo: string; pagina: number | null; score: number }[];
         latencia_ms: number;
-      }>(`/chat/conversaciones/${conv.id_conversacion}/mensajes`, { pregunta: texto });
+      }>(`/chat/conversaciones/${conv.id_conversacion}/mensajes`, {
+        pregunta: texto,
+        id_categoria: selectedTema?.id_categoria ?? null,
+      });
 
       const detalle = await api.get<ConversacionDetalle>(
         `/chat/conversaciones/${conv.id_conversacion}`,

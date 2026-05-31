@@ -8,6 +8,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Users,
+  AlertTriangle,
 } from "lucide-react";
 
 import { api, type Metricas } from "@/lib/api";
@@ -19,6 +20,7 @@ const CARDS = [
   { key: "total_mensajes", label: "Mensajes", icon: MessageSquare, color: "text-violet-600" },
   { key: "mensajes_utiles", label: "Útiles", icon: ThumbsUp, color: "text-emerald-500" },
   { key: "mensajes_no_utiles", label: "No útiles", icon: ThumbsDown, color: "text-red-500" },
+  { key: "vacios_conocimiento", label: "Vacíos detectados", icon: AlertTriangle, color: "text-orange-600" },
 ] as const;
 
 export default function AdminDashboardPage() {

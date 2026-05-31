@@ -188,9 +188,10 @@ export type Documento = {
   titulo: string;
   descripcion?: string | null;
   formato: string;
-  estado: "pendiente" | "procesando" | "indexado" | "error";
+  estado: "pendiente" | "procesando" | "indexado" | "error" | "requiere_revision";
   error_mensaje?: string | null;
   tamano_bytes?: number | null;
+  palabras_clave?: string | null;
   fecha_subida: string;
   fecha_indexado?: string | null;
   categoria?: Categoria | null;
@@ -209,4 +210,5 @@ export type Metricas = {
   total_mensajes: number;
   mensajes_utiles: number;
   mensajes_no_utiles: number;
+  vacios_conocimiento: number;
 };

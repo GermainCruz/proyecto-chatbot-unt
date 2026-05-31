@@ -42,7 +42,8 @@ _INTENT_KEYWORDS: dict[Intent, list[str]] = {
     "requisitos": [
         "requisitos", "documentos", "qué necesito", "que necesito",
         "qué debo llevar", "que debo llevar", "papeles", "checklist",
-        "lista de documentos", "qué papeles",
+        "lista de documentos", "qué papeles", "condiciones previas",
+        "que condiciones", "condiciones"
     ],
     "fechas": [
         "hasta cuándo", "hasta cuando", "plazo", "fecha límite", "fecha limite",

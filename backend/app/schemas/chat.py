@@ -49,6 +49,7 @@ class ActualizarConversacionIn(BaseModel):
 
 class PreguntaIn(BaseModel):
     pregunta: str = Field(min_length=1, max_length=2000)
+    id_categoria: int | None = None
 
 
 class FeedbackIn(BaseModel):

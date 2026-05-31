@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Trash2,
   Upload,
+  AlertTriangle,
 } from "lucide-react";
 
 import { api, ApiError, type Categoria, type Documento } from "@/lib/api";
@@ -16,9 +17,10 @@ import { cn, formatBytes, formatDate } from "@/lib/utils";
 
 const ESTADO_STYLE: Record<string, { label: string; cls: string; icon: any }> = {
   pendiente: { label: "Pendiente", cls: "bg-slate-100 text-slate-700", icon: Clock },
-  procesando: { label: "Procesando", cls: "bg-amber-100 text-amber-800", icon: Loader2 },
-  indexado: { label: "Indexado", cls: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-  error: { label: "Error", cls: "bg-red-100 text-red-700", icon: AlertCircle },
+  procesando: { label: "Procesando", cls: "bg-unt-blue-50 text-unt-blue-700", icon: Loader2 },
+  indexado: { label: "Indexado", cls: "bg-emerald-50 text-emerald-700", icon: CheckCircle2 },
+  error: { label: "Error", cls: "bg-red-50 text-red-700", icon: AlertCircle },
+  requiere_revision: { label: "Revisar (OCR)", cls: "bg-orange-50 text-orange-700", icon: AlertTriangle },
 };
 
 export default function AdminDocumentosPage() {
@@ -30,6 +32,7 @@ export default function AdminDocumentosPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [palabrasClave, setPalabrasClave] = useState("");
   const [idCategoria, setIdCategoria] = useState<number | "">("");
   const [confirmarEliminar, setConfirmarEliminar] = useState<number | null>(null);
 
@@ -69,11 +72,13 @@ export default function AdminDocumentosPage() {
       const fd = new FormData();
       fd.append("titulo", titulo.trim());
       if (descripcion) fd.append("descripcion", descripcion);
+      if (palabrasClave) fd.append("palabras_clave", palabrasClave);
       if (idCategoria) fd.append("id_categoria", String(idCategoria));
       fd.append("archivo", file);
       await api.upload("/admin/documentos", fd);
       setTitulo("");
       setDescripcion("");
+      setPalabrasClave("");
       setIdCategoria("");
       if (inputRef.current) inputRef.current.value = "";
       await cargar();
@@ -119,6 +124,15 @@ export default function AdminDocumentosPage() {
             />
           </div>
           <div>
+            <label className="label">Palabras clave</label>
+            <input
+              className="input"
+              value={palabrasClave}
+              onChange={(e) => setPalabrasClave(e.target.value)}
+              placeholder="Ej. postulación comedor, ticket, requisitos"
+            />
+          </div>
+          <div>
             <label className="label">Categoría</label>
             <select
               className="input"
@@ -128,7 +142,7 @@ export default function AdminDocumentosPage() {
               <option value="">— Sin categoría —</option>
               {cats.map((c) => (
                 <option key={c.id_categoria} value={c.id_categoria}>
-                  {c.nombre}
+                  {c.descripcion || c.nombre}
                 </option>
               ))}
             </select>
@@ -231,7 +245,7 @@ export default function AdminDocumentosPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {d.categoria?.nombre || "—"}
+                      {d.categoria?.descripcion || d.categoria?.nombre || "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span

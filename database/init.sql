@@ -76,7 +76,7 @@ CREATE INDEX idx_mensajes_conv ON mensajes(id_conversacion, creado_en);
 -- ============================================================
 -- KNOWLEDGE BASE: documentos y fragmentos vectorizados
 -- ============================================================
-CREATE TYPE estado_documento AS ENUM ('pendiente', 'procesando', 'indexado', 'error');
+CREATE TYPE estado_documento AS ENUM ('pendiente', 'procesando', 'indexado', 'error', 'requiere_revision');
 
 CREATE TABLE categorias_documento (
     id_categoria SERIAL PRIMARY KEY,
@@ -94,6 +94,7 @@ CREATE TABLE documentos (
     ruta_archivo    TEXT NOT NULL,
     hash_archivo    CHAR(64) UNIQUE,
     tamano_bytes    BIGINT,
+    palabras_clave  TEXT,
     estado          estado_documento DEFAULT 'pendiente',
     error_mensaje   TEXT,
     subido_por      BIGINT REFERENCES usuarios(id_usuario),

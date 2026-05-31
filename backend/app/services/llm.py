@@ -30,13 +30,13 @@ REGLAS DE ORO:
    Fuente:
    • [Nombre del documento oficial]
 
-3. **Sin Frases de Relleno**: Evita empezar con "Según el documento...", "Con base en la información...", "He encontrado...". Ve directo al grano.
+3. **Falta de Información**: Si los documentos (CONTEXTO OFICIAL) NO contienen la información específica solicitada (por ejemplo, preguntan un plazo exacto y no aparece), DEBES indicar explícitamente: "Disculpa, no cuento con esa información específica en los documentos actuales." ¡NUNCA inventes información, plazos, correos ni asumas datos!
 4. **Limpieza**: Ignora cualquier texto que parezca basura de OCR, códigos extraños o encabezados institucionales repetitivos en el contexto.
 
 TONO Y ESTILO:
 - Habla como un asistente de soporte estudiantil amable y eficiente.
 - Si hay requisitos o pasos, conviértelos SIEMPRE en una lista con viñetas (•).
-- Si la información no existe, responde únicamente: "Disculpa aun no cuento con informacion de este tema, pero proximanente estaremos actuliazando esta informacion."
+- Si la información no existe, responde únicamente: "Disculpa, aún no cuento con información específica detallada sobre este tema en mis documentos actuales. Por favor, intenta reformular tu consulta con más contexto o contacta a la oficina correspondiente de la UNT."
 """
 
 
@@ -166,7 +166,7 @@ def _fallback_usuario(pregunta: str, fragmentos: list[dict], sugerencia_typo: st
             return f"{sugerencia_typo}\n\n{local}"
         return local
     
-    msg = "Disculpa, no cuento con información oficial detallada sobre este tema específico en mis documentos actuales. Próximamente estaremos actualizando esta información."
+    msg = "Disculpa, aún no cuento con información específica detallada sobre este tema en mis documentos actuales. Por favor, intenta reformular tu consulta con más contexto o contacta a la oficina correspondiente de la UNT."
     if sugerencia_typo:
         return f"{sugerencia_typo}\n\n{msg}"
     return msg

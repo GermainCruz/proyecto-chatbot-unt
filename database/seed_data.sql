@@ -8,6 +8,7 @@ INSERT INTO categorias_documento (nombre, descripcion, icono) VALUES
   ('silabo',         'Sílabos y currículas',                       'BookOpen'),
   ('matricula',      'Procesos de matrícula',                      'ClipboardList'),
   ('bienestar',      'Bienestar universitario, gimnasio, comedor', 'Heart'),
+  ('gym',            'Gym UNT',                                    'Dumbbell'),
   ('tramites',       'Trámites académicos y administrativos',      'FileText'),
   ('biblioteca',     'Biblioteca y préstamo de libros',            'Library'),
   ('laboratorios',   'Ubicación y reserva de laboratorios',        'FlaskConical'),
