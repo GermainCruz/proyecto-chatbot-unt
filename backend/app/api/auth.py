@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -54,7 +55,14 @@ def registro(payload: RegistroIn, request: Request, db: Session = Depends(get_db
         correo_verificado=True,
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        msg = str(exc).lower()
+        if "unique" in msg or "duplicate" in msg:
+            raise HTTPException(status_code=409, detail="Ya existe un usuario con ese correo") from exc
+        raise HTTPException(status_code=400, detail="No se pudo crear la cuenta") from exc
     db.refresh(user)
     return _emitir_tokens(db, user, request)
 

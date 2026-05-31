@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     RAG_MAX_FRAGMENTOS_LLM: int = 5
     RAG_MAX_FUENTES: int = 3
 
-    STORAGE_DIR: str = "storage/pdfs"
+    STORAGE_DIR: str = "documentos"
     MAX_PDF_MB: int = 25
 
     ADMIN_EMAIL: str = "admin@unitru.edu.pe"

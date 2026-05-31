@@ -21,6 +21,23 @@ export const tokenStorage = {
   },
 };
 
+function formatApiDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          return String((item as { msg: string }).msg);
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join(" ");
+  }
+  return "";
+}
+
 class ApiError extends Error {
   status: number;
   detail: unknown;
@@ -85,10 +102,12 @@ async function request<T>(
   const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
-    const message =
-      (isJson && (data as any).detail) ||
-      `Error ${res.status} en ${path}`;
-    throw new ApiError(res.status, data, String(message));
+    const message = isJson ? formatApiDetail((data as { detail?: unknown }).detail) : "";
+    throw new ApiError(
+      res.status,
+      data,
+      message || `Error ${res.status} en ${path}`,
+    );
   }
   return data as T;
 }

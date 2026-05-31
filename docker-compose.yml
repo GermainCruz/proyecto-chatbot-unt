@@ -8,8 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-untbot}
       POSTGRES_DB: ${POSTGRES_DB:-untbot}
     ports:
-      # 5433 en el host evita conflicto con PostgreSQL instalado en Windows (puerto 5432)
-      - "5433:5432"
+      # Puerto en el host configurable (por defecto 5434). Si 5433 está ocupado por otro contenedor, usa POSTGRES_HOST_PORT en .env
+      - "${POSTGRES_HOST_PORT:-5434}:5432"
     volumes:
       - untbot_pgdata:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
@@ -34,6 +34,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gemini-2.0-flash}
+      LLM_MODEL_FALLBACK: ${LLM_MODEL_FALLBACK:-gemini-2.0-flash}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-004}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-768}
       ALLOWED_EMAIL_DOMAIN: unitru.edu.pe
@@ -41,27 +42,27 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@unitru.edu.pe}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin1234*}
       ADMIN_NAME: ${ADMIN_NAME:-Administrador UNT Bot}
+      STORAGE_DIR: /app/documentos
     volumes:
-      - untbot_storage:/app/storage
+      - ./documentos:/app/documentos
       - ./backend/app:/app/app
     ports:
-      # 8001 en el host para no chocar con uvicorn local en 8000 (npm run dev + backend manual)
       - "8001:8000"
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+        NEXT_PUBLIC_API_URL: /api
     container_name: untbot_frontend
     restart: unless-stopped
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+      NEXT_PUBLIC_API_URL: /api
+      BACKEND_URL: http://backend:8000
     ports:
       - "3000:3000"
 
 volumes:
   untbot_pgdata:
-  untbot_storage:

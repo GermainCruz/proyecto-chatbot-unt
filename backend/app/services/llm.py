@@ -8,12 +8,15 @@ from openai import OpenAI
 from app.core.config import settings
 from app.services.conversation import Intent, instrucciones_para_intencion
 from app.services.embeddings import _is_usable_api_key
+from app.services.formato_respuesta import normalizar_formato_respuesta
 from app.services.respuesta_local import generar_respuesta_local
+from app.services.text_clean import limpiar_texto_ocr
 
 
 SYSTEM_PROMPT = """Eres "UNT Bot", el asistente inteligente oficial de la Universidad Nacional de Trujillo (UNT). Tu misión es ayudar a los estudiantes con respuestas humanas, claras y directas.
 
 REGLAS DE ORO:
+0. **Solo UNT**: Si la pregunta no es sobre procesos académicos o administrativos de la UNT, responde cordialmente que no estás diseñado para ese tipo de consultas (sin inventar datos).
 1. **No Copiar Literal**: Está TERMINANTEMENTE PROHIBIDO copiar y pegar párrafos completos del PDF. Debes leer, interpretar y resumir la información.
 2. **Formato Obligatorio**: Todas tus respuestas deben seguir estrictamente esta estructura:
    
@@ -93,6 +96,16 @@ def _es_error_cuota(exc: Exception) -> bool:
     return "429" in msg or "quota" in msg or "resourceexhausted" in msg
 
 
+def _titulo_fuente(fragmentos: list[dict]) -> str | None:
+    if not fragmentos:
+        return None
+    return (fragmentos[0].get("titulo") or "").strip() or None
+
+
+def _formatear_salida(texto: str, fragmentos: list[dict]) -> str:
+    return normalizar_formato_respuesta(texto, _titulo_fuente(fragmentos))
+
+
 def _limpiar_respuesta_usuario(texto: str) -> str:
     """Quita restos técnicos que no deben verse en el chat."""
     # Reducimos la lista de palabras prohibidas para evitar falsos positivos
@@ -111,22 +124,6 @@ def _limpiar_respuesta_usuario(texto: str) -> str:
     return "\n".join(lineas).strip()
 
 
-def _limpiar_texto_ocr(texto: str) -> str:
-    """Elimina basura común de OCR, encabezados repetidos y caracteres corruptos."""
-    if not texto:
-        return ""
-    # Eliminar caracteres corruptos de OCR como (cid:127)
-    texto = re.sub(r"\(cid:\d+\)", "", texto)
-    # Eliminar múltiples saltos de línea y espacios, pero preservar puntos importantes
-    texto = re.sub(r"\n\s*\n", "\n", texto)
-    texto = re.sub(r" {2,}", " ", texto)
-    # No eliminar nombres de instituciones si son parte de una dirección o título de documento
-    # Solo eliminar si aparecen como encabezados aislados (párrafos de una sola línea)
-    texto = re.sub(r"(?m)^\s*UNIVERSIDAD NACIONAL DE TRUJILLO\s*$", "", texto)
-    texto = re.sub(r"(?m)^\s*UNIDAD DE BIENESTAR UNIVERSITARIO\s*$", "", texto)
-    return texto.strip()
-
-
 def build_user_prompt(
     pregunta: str,
     fragmentos: list[dict],
@@ -140,7 +137,7 @@ def build_user_prompt(
     else:
         bloques = []
         for i, f in enumerate(fragmentos, start=1):
-            texto_limpio = _limpiar_texto_ocr(f['texto'])
+            texto_limpio = limpiar_texto_ocr(f["texto"])
             bloques.append(f"DOCUMENTO: {f['titulo']}\nCONTENIDO: {texto_limpio}")
         contexto = "\n\n".join(bloques)
 
@@ -236,7 +233,8 @@ def generar_respuesta(
         try:
             resultado = _generar_con_gemini(user_prompt, modelo)
             if resultado:
-                return resultado
+                texto, t_in, t_out = resultado
+                return (_formatear_salida(texto, fragmentos), t_in, t_out)
         except Exception as exc:
             if _es_error_cuota(exc):
                 logger.warning(f"Cuota Gemini agotada ({modelo}); usando resumen local")
@@ -257,7 +255,7 @@ def generar_respuesta(
             texto = _limpiar_respuesta_usuario(resp.choices[0].message.content or "")
             usage = resp.usage
             return (
-                texto,
+                _formatear_salida(texto, fragmentos),
                 (usage.prompt_tokens if usage else 0),
                 (usage.completion_tokens if usage else 0),
             )
@@ -278,7 +276,8 @@ def generar_respuesta(
             msg = f"{sugerencia_typo}\n\n{msg}"
         return (msg, 0, 0)
 
-    return (_fallback_usuario(pregunta, fragmentos, sugerencia_typo), 0, 0)
+    fb = _fallback_usuario(pregunta, fragmentos, sugerencia_typo)
+    return (_formatear_salida(fb, fragmentos), 0, 0)
 
 
 def generar_titulo_conversacion(pregunta: str) -> str:

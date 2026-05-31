@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.paths import resolve_storage_dir
 from app.core.database import SessionLocal, get_db
 from app.core.deps import require_admin
 from app.models.conversacion import Conversacion, Mensaje
@@ -100,7 +101,7 @@ def subir_documento(
     if not archivo.filename or not archivo.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo debe tener extensión .pdf")
 
-    storage = Path(settings.STORAGE_DIR)
+    storage = resolve_storage_dir()
     storage.mkdir(parents=True, exist_ok=True)
     ruta = storage / f"{uuid4().hex}.pdf"
 

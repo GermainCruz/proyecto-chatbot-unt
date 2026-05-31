@@ -40,7 +40,6 @@ export default function RegistroPage() {
       setError("Las contraseñas no coinciden");
       return;
     }
-
     setLoading(true);
     try {
       await registro(nombre.trim(), correo.trim().toLowerCase(), password);
@@ -65,7 +64,7 @@ export default function RegistroPage() {
             Únete a la comunidad QueryBot.
           </h2>
           <p className="text-white/85">
-            Crea tu cuenta para empezar a chatear con QueryBot.
+            Crea tu cuenta con cualquier correo electrónico para empezar a chatear con QueryBot.
           </p>
         </div>
         <p className="text-xs text-white/70">© Universidad Nacional de Trujillo</p>
@@ -102,7 +101,7 @@ export default function RegistroPage() {
                 id="correo"
                 type="email"
                 required
-                placeholder="usuario@gmail.com"
+                placeholder="tu-correo@ejemplo.com"
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 className="input"

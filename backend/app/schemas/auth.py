@@ -1,9 +1,4 @@
-import re
-
 from pydantic import BaseModel, EmailStr, Field, field_validator
-
-from app.core.config import settings
-
 
 class RegistroIn(BaseModel):
     nombre_completo: str = Field(min_length=3, max_length=150)
@@ -22,7 +17,7 @@ class RegistroIn(BaseModel):
     @field_validator("correo")
     @classmethod
     def normalize_email(cls, v: str) -> str:
-        return v.lower()
+        return v.lower().strip()
 
 
 class LoginIn(BaseModel):

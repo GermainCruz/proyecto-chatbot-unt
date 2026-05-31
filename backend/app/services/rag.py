@@ -17,6 +17,7 @@ from app.services.conversation import (
     formatear_historial,
     normalizar_pregunta,
 )
+from app.services.academic_guard import evaluar_alcance_academico
 from app.services.llm import generar_respuesta, generar_titulo_conversacion
 from app.services.pdf_loader import chunkear_pdf
 from app.services.rag_filter import seleccionar_fragmentos
@@ -111,6 +112,19 @@ def responder_pregunta(
     """Pipeline RAG completo. Devuelve dict con respuesta, fuentes y métricas."""
     inicio = time.time()
     try:
+        alcance = evaluar_alcance_academico(pregunta)
+        if not alcance.permitida:
+            return {
+                "contenido": alcance.mensaje,
+                "fuentes": [],
+                "tokens_entrada": 0,
+                "tokens_salida": 0,
+                "latencia_ms": int((time.time() - inicio) * 1000),
+                "modelo_llm": settings.LLM_MODEL,
+                "fragmentos_ids": [],
+                "scores": [],
+            }
+
         pregunta_norm, sugerencia_typo = normalizar_pregunta(pregunta)
         intent = detectar_intencion(pregunta_norm)
         historial = formatear_historial(historial_mensajes or [])
