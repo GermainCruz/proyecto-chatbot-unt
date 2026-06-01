@@ -19,7 +19,8 @@ _RE_HORA = re.compile(
 
 
 def _lineas_relevantes(pregunta: str, texto: str, max_lineas: int = 12) -> list[str]:
-    terminos = [t for t in _normalizar(pregunta).split() if len(t) > 3]
+    # Usar los primeros 6 caracteres de cada palabra larga para hacer un "stemming" rústico
+    terminos = [t[:6] for t in _normalizar(pregunta).split() if len(t) > 3]
     if not terminos:
         return []
 
@@ -113,8 +114,10 @@ def generar_respuesta_local(pregunta: str, fragmentos: list[dict]) -> str | None
     if not lineas_unicas:
         return None
 
+    # Limitar las lineas mostradas para evitar un muro de texto
+    lineas_finales = lineas_unicas[:6]
     resumen = (
         "Según la documentación oficial de la UNT, estos son los puntos principales "
         "relacionados con tu consulta:"
     )
-    return _respuesta_estructurada(resumen, lineas_unicas[:10], titulo)
+    return _respuesta_estructurada(resumen, lineas_finales, titulo)

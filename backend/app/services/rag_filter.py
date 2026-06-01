@@ -68,7 +68,7 @@ def _temas_pregunta(pregunta: str) -> set[str]:
         temas.add("gimnasio")
     if "comedor" in q:
         temas.add("comedor")
-    if "matricula" in q or "matricular" in q:
+    if "matricul" in q:
         temas.add("matricula")
     if "bienestar" in q:
         temas.add("bienestar")
@@ -85,7 +85,7 @@ def _tema_fragmento(texto: str, titulo: str) -> set[str]:
         temas.add("gimnasio")
     if "comedor" in n:
         temas.add("comedor")
-    if "matricula" in n:
+    if "matricul" in n:
         temas.add("matricula")
     if "bienestar" in n:
         temas.add("bienestar")
@@ -104,11 +104,12 @@ def puntaje_fragmento(pregunta: str, fragmento: dict) -> float:
     boost = 0.0
     terminos_encontrados = 0
     for t in terminos:
-        # Coincidencia exacta (Case insensitive gracias a _normalizar)
-        if t in texto:
+        # Coincidencia con raíz (stem) para mayor flexibilidad
+        stem = t[:6] if len(t) > 6 else t
+        if stem in texto:
             boost += 0.12  # Incrementado de 0.08
             terminos_encontrados += 1
-        if t in titulo:
+        if stem in titulo:
             boost += 0.20  # Incrementado de 0.15
             terminos_encontrados += 1
 

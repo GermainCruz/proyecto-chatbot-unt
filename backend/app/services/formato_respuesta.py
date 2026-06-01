@@ -58,6 +58,12 @@ def normalizar_formato_respuesta(texto: str, titulo_fuente: str | None = None) -
     t = _RE_BOILERPLATE_INICIO.sub("", t)
     t = _RE_BOILERPLATE_FIN.sub("", t).strip()
 
+    # Si es el mensaje de fallback por defecto, evitar formato de lista duplicado
+    if "no cuento con información específica" in t.lower() or "no cuento con documentos" in t.lower():
+        if titulo_fuente:
+            return f"**Respuesta:**\n{t}\n\n**Fuente:**\n- {titulo_fuente}"
+        return f"**Respuesta:**\n{t}"
+
     if re.search(r"(?im)^\s*(\*\*)?\s*respuesta\s*(\*\*)?\s*:", t):
         return _arreglar_listas(t)
 
@@ -70,6 +76,13 @@ def normalizar_formato_respuesta(texto: str, titulo_fuente: str | None = None) -
 
     if not lineas_utiles:
         return _arreglar_listas(t) if t else texto
+
+    # Evitar crear resumenes y detalles si solo hay 1 o 2 lineas sin sentido de lista
+    if len(lineas_utiles) <= 1:
+        resumen = lineas_utiles[0]
+        if titulo_fuente:
+            return f"**Respuesta:**\n{resumen}\n\n**Fuente:**\n- {titulo_fuente}"
+        return f"**Respuesta:**\n{resumen}"
 
     resumen = lineas_utiles[0]
     if len(resumen) > 220:

@@ -4,6 +4,7 @@ import re
 import google.generativeai as genai
 from loguru import logger
 from openai import OpenAI
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
 
 from app.core.config import settings
 from app.services.conversation import Intent, instrucciones_para_intencion
@@ -172,6 +173,12 @@ def _fallback_usuario(pregunta: str, fragmentos: list[dict], sugerencia_typo: st
     return msg
 
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(4),
+    retry=retry_if_exception(_es_error_cuota),
+    reraise=True
+)
 def _generar_con_gemini(user_prompt: str, model_name: str) -> tuple[str, int, int] | None:
     gemini = _get_gemini_model(model_name)
     if not gemini:
@@ -194,6 +201,7 @@ def _generar_con_gemini(user_prompt: str, model_name: str) -> tuple[str, int, in
     except Exception as exc:
         logger.warning(f"Gemini ({model_name}) falló: {exc}")
         if _es_error_cuota(exc):
+            logger.info(f"Reintentando llamada a Gemini debido a error de cuota: {exc}")
             raise
         return None
 
