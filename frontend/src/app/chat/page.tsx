@@ -415,6 +415,7 @@ export default function ChatPage() {
         conversaciones={conversacionesVisibles}
         archivedChats={conversacionesArchivadas}
         documentos={documentos}
+        showDocumentosBase={user?.rol === "administrador"}
         activeId={activa?.id_conversacion ?? null}
         mode={panelMode}
         search={panelSearch}

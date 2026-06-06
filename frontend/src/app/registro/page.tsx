@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -11,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function RegistroPage() {
   const { registro } = useAuth();
+  const router = useRouter();
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
@@ -71,6 +73,16 @@ export default function RegistroPage() {
       </div>
 
       <div className="relative flex items-center justify-center p-6 sm:p-12">
+        <div className="absolute left-4 top-4 z-10">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2 text-xs font-semibold text-slate-700 backdrop-blur transition hover:bg-white dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </button>
+        </div>
         <div className="absolute right-4 top-4 z-10">
           <ThemeToggle />
         </div>
