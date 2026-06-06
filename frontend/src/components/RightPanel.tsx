@@ -24,6 +24,7 @@ type Props = {
   search: string;
   temasPorConversacion?: Record<string, string>;
   canNewChat?: boolean;
+  isAdmin?: boolean;
   onSelect: (id: string) => void;
   onNew: () => void;
   onArchive: (id: string) => void;
@@ -41,6 +42,7 @@ export function RightPanel({
   search,
   temasPorConversacion = {},
   canNewChat,
+  isAdmin = false,
   onSelect,
   onNew,
   onArchive,
@@ -56,37 +58,39 @@ export function RightPanel({
 
   return (
     <aside className="hidden h-screen w-72 shrink-0 flex-col border-l border-chat-line bg-chat-shell px-4 py-4 text-zinc-200 lg:flex">
-      <section className={cn(mode !== "documentos" && "opacity-55")}>
-        <h2 className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">
-          Documentos base
-        </h2>
-        {documentos.length === 0 ? (
-          <p className="mt-4 text-xs leading-relaxed text-zinc-500">
-            Aun no hay PDFs cargados. Los nombres apareceran aqui conforme alimentes QueryBot desde el panel de documentos.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {documentos.slice(0, 10).map((doc) => (
-              <li key={doc.id_documento} className="flex items-start gap-2 text-xs font-semibold text-zinc-300">
-                <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
-                <span className="leading-tight">
-                  {doc.titulo}
-                  <span className="mt-1 block text-[10px] font-medium text-zinc-500">
-                    {doc.categoria || "Sin categoria"} · {doc.fragmentos_count} fragmentos
-                  </span>
-                  {doc.estado !== "indexado" && (
-                    <span className="mt-1 block text-[10px] font-medium text-amber-400">
-                      {doc.estado}
+      {isAdmin && (
+        <section className={cn(mode !== "documentos" && "opacity-55")}>
+          <h2 className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">
+            Documentos base
+          </h2>
+          {documentos.length === 0 ? (
+            <p className="mt-4 text-xs leading-relaxed text-zinc-500">
+              Aun no hay PDFs cargados. Los nombres apareceran aqui conforme alimentes QueryBot desde el panel de documentos.
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {documentos.slice(0, 10).map((doc) => (
+                <li key={doc.id_documento} className="flex items-start gap-2 text-xs font-semibold text-zinc-300">
+                  <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                  <span className="leading-tight">
+                    {doc.titulo}
+                    <span className="mt-1 block text-[10px] font-medium text-zinc-500">
+                      {doc.categoria || "Sin categoria"} · {doc.fragmentos_count} fragmentos
                     </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                    {doc.estado !== "indexado" && (
+                      <span className="mt-1 block text-[10px] font-medium text-amber-400">
+                        {doc.estado}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
-      <section className={cn("mt-7 min-h-0 flex-1", mode !== "historial" && "opacity-55")}>
+      <section className={cn("flex flex-col", isAdmin ? "mt-7 min-h-0 flex-1" : "min-h-0 flex-1", mode !== "historial" && "opacity-55")}>
         <h2 className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">
           Historial
         </h2>
@@ -99,7 +103,7 @@ export function RightPanel({
             className="min-w-0 flex-1 bg-transparent text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
           />
         </div>
-        <div className="mt-4 h-full overflow-y-auto pr-1 scrollbar-thin">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-thin">
           {historial.length === 0 ? (
             <p className="text-xs text-zinc-500">Sin conversaciones aun.</p>
           ) : (
@@ -199,7 +203,7 @@ export function RightPanel({
         type="button"
         onClick={onNew}
         disabled={!canNewChat}
-        className="mt-4 flex h-10 items-center justify-center gap-2 rounded-lg border border-zinc-500 text-sm font-bold text-zinc-100 transition hover:border-zinc-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-45"
+        className="mt-4 flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-500 text-sm font-bold text-zinc-100 transition hover:border-zinc-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-45"
       >
         <Plus className="h-4 w-4" />
         Nuevo chat
