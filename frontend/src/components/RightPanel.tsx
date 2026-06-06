@@ -25,6 +25,7 @@ type Props = {
   search: string;
   temasPorConversacion?: Record<string, string>;
   canNewChat?: boolean;
+  isAdmin?: boolean;
   onSelect: (id: string) => void;
   onNew: () => void;
   onArchive: (id: string) => void;
@@ -43,6 +44,7 @@ export function RightPanel({
   search,
   temasPorConversacion = {},
   canNewChat,
+  isAdmin = false,
   onSelect,
   onNew,
   onArchive,
@@ -58,7 +60,11 @@ export function RightPanel({
 
   return (
     <aside className="hidden h-screen w-72 shrink-0 flex-col border-l border-chat-line bg-chat-shell px-4 py-4 text-zinc-200 lg:flex">
+<<<<<<< HEAD
       {showDocumentosBase && (
+=======
+      {isAdmin && (
+>>>>>>> 7d039d050c820cf9c1eb9bdf2f82b10d15ea79e6
         <section className={cn(mode !== "documentos" && "opacity-55")}>
           <h2 className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">
             Documentos base
@@ -70,10 +76,14 @@ export function RightPanel({
           ) : (
             <ul className="mt-4 space-y-3">
               {documentos.slice(0, 10).map((doc) => (
+<<<<<<< HEAD
                 <li
                   key={doc.id_documento}
                   className="flex items-start gap-2 text-xs font-semibold text-zinc-300"
                 >
+=======
+                <li key={doc.id_documento} className="flex items-start gap-2 text-xs font-semibold text-zinc-300">
+>>>>>>> 7d039d050c820cf9c1eb9bdf2f82b10d15ea79e6
                   <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
                   <span className="leading-tight">
                     {doc.titulo}
@@ -93,6 +103,7 @@ export function RightPanel({
         </section>
       )}
 
+<<<<<<< HEAD
       <section
         className={cn(
           "min-h-0 flex-1",
@@ -100,6 +111,9 @@ export function RightPanel({
           mode !== "historial" && "opacity-55",
         )}
       >
+=======
+      <section className={cn("flex flex-col", isAdmin ? "mt-7 min-h-0 flex-1" : "min-h-0 flex-1", mode !== "historial" && "opacity-55")}>
+>>>>>>> 7d039d050c820cf9c1eb9bdf2f82b10d15ea79e6
         <h2 className="text-[11px] font-bold uppercase tracking-wide text-zinc-400">
           Historial
         </h2>
@@ -112,7 +126,11 @@ export function RightPanel({
             className="min-w-0 flex-1 bg-transparent text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
           />
         </div>
+<<<<<<< HEAD
         <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 scrollbar-thin pb-10">
+=======
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-thin">
+>>>>>>> 7d039d050c820cf9c1eb9bdf2f82b10d15ea79e6
           {historial.length === 0 ? (
             <p className="text-xs text-zinc-500">Sin conversaciones aun.</p>
           ) : (
@@ -210,6 +228,7 @@ export function RightPanel({
         </div>
       </section>
 
+<<<<<<< HEAD
       <div className="mt-4 border-t border-zinc-700 pt-4">
         <button
           type="button"
@@ -221,6 +240,17 @@ export function RightPanel({
           Nuevo chat
         </button>
       </div>
+=======
+      <button
+        type="button"
+        onClick={onNew}
+        disabled={!canNewChat}
+        className="mt-4 flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-500 text-sm font-bold text-zinc-100 transition hover:border-zinc-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-45"
+      >
+        <Plus className="h-4 w-4" />
+        Nuevo chat
+      </button>
+>>>>>>> 7d039d050c820cf9c1eb9bdf2f82b10d15ea79e6
 
       <ConfirmDialog
         open={deleteTarget !== null}
