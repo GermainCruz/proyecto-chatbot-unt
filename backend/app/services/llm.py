@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import google.generativeai as genai
 from loguru import logger
-from openai import OpenAI
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
 
 from app.core.config import settings
@@ -41,17 +40,7 @@ TONO Y ESTILO:
 """
 
 
-_openai_client: OpenAI | None = None
 _gemini_models: dict[str, genai.GenerativeModel] = {}
-
-
-def _get_openai_client() -> OpenAI | None:
-    global _openai_client
-    if not _is_usable_api_key(settings.OPENAI_API_KEY):
-        return None
-    if _openai_client is None:
-        _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    return _openai_client
 
 
 def _get_gemini_model(model_name: str | None = None) -> genai.GenerativeModel | None:
@@ -233,42 +222,14 @@ def generar_respuesta(
         sugerencia_typo=sugerencia_typo,
     )
 
-    modelos_gemini = [settings.LLM_MODEL]
-    if settings.LLM_MODEL_FALLBACK and settings.LLM_MODEL_FALLBACK not in modelos_gemini:
-        modelos_gemini.append(settings.LLM_MODEL_FALLBACK)
-
-    for modelo in modelos_gemini:
-        try:
-            resultado = _generar_con_gemini(user_prompt, modelo)
-            if resultado:
-                texto, t_in, t_out = resultado
-                return (_formatear_salida(texto, fragmentos), t_in, t_out)
-        except Exception as exc:
-            if _es_error_cuota(exc):
-                logger.warning(f"Cuota Gemini agotada ({modelo}); usando resumen local")
-            continue
-
-    openai_client = _get_openai_client()
-    if openai_client:
-        try:
-            resp = openai_client.chat.completions.create(
-                model=settings.LLM_MODEL,
-                temperature=0.3,
-                max_tokens=settings.LLM_MAX_OUTPUT_TOKENS,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-            texto = _limpiar_respuesta_usuario(resp.choices[0].message.content or "")
-            usage = resp.usage
-            return (
-                _formatear_salida(texto, fragmentos),
-                (usage.prompt_tokens if usage else 0),
-                (usage.completion_tokens if usage else 0),
-            )
-        except Exception as exc:
-            logger.warning(f"OpenAI falló: {exc}")
+    try:
+        resultado = _generar_con_gemini(user_prompt, settings.LLM_MODEL)
+        if resultado:
+            texto, t_in, t_out = resultado
+            return (_formatear_salida(texto, fragmentos), t_in, t_out)
+    except Exception as exc:
+        if _es_error_cuota(exc):
+            logger.warning("Cuota Gemini agotada; usando resumen local")
 
     if not fragmentos:
         texto_lower = pregunta.lower().strip()
@@ -292,10 +253,8 @@ def generar_titulo_conversacion(pregunta: str) -> str:
     """Genera un título corto basado en la primera pregunta."""
     base = pregunta.strip().split("\n")[0]
 
-    for modelo in (settings.LLM_MODEL, settings.LLM_MODEL_FALLBACK):
-        gemini = _get_gemini_model(modelo)
-        if not gemini:
-            continue
+    gemini = _get_gemini_model(settings.LLM_MODEL)
+    if gemini:
         try:
             prompt = (
                 "Genera un título breve (máx 6 palabras) en español que resuma la siguiente "
@@ -312,29 +271,6 @@ def generar_titulo_conversacion(pregunta: str) -> str:
             titulo = _texto_desde_respuesta_gemini(resp).strip().strip('"').strip("'")
             if titulo:
                 return titulo[:80]
-        except Exception:
-            continue
-
-    openai_client = _get_openai_client()
-    if openai_client:
-        try:
-            resp = openai_client.chat.completions.create(
-                model=settings.LLM_MODEL,
-                temperature=0.3,
-                max_tokens=32,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "Genera un título breve (máx 6 palabras) en español que resuma la siguiente "
-                            "pregunta de un estudiante UNT. Responde SOLO con el título, sin comillas."
-                        ),
-                    },
-                    {"role": "user", "content": pregunta},
-                ],
-            )
-            titulo = (resp.choices[0].message.content or base).strip().strip('"').strip("'")
-            return titulo[:80] or base[:60]
         except Exception:
             pass
 

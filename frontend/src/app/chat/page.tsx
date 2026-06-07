@@ -421,7 +421,6 @@ export default function ChatPage() {
         search={panelSearch}
         temasPorConversacion={temasPorConversacion}
         canNewChat={canNewChat}
-        isAdmin={user?.rol === "administrador"}
         onSelect={seleccionar}
         onNew={nuevoChat}
         onArchive={archivar}

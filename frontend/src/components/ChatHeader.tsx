@@ -9,11 +9,6 @@ import { cn } from "@/lib/utils";
 // SVG incluido en public/; opcionalmente reemplaza por querybot-header.png
 const HEADER_IMAGE_SRC = "/querybot-header.svg";
 
-const TEMAS_FALLBACK: TemaChat[] = [
-  { id_categoria: 2, nombre: "silabo", descripcion: "Silabos y curriculas", documentos_count: 0 },
-  { id_categoria: 3, nombre: "tramites", descripcion: "Tramites academicos", documentos_count: 0 },
-];
-
 type Props = {
   temas: TemaChat[];
   selectedTema: TemaChat | null;
@@ -40,7 +35,6 @@ function labelTema(tema: TemaChat) {
 
 export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }: Props) {
   const [imageError, setImageError] = useState(false);
-  const siempreMostrar = new Set(["silabo", "tramites"]);
   const prioridad = ["matricula", "silabo", "tramites", "bienestar"];
   const ordenados = [...temas].sort((a, b) => {
     const ai = prioridad.indexOf(a.nombre);
@@ -48,10 +42,7 @@ export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }:
     if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     return b.documentos_count - a.documentos_count || a.nombre.localeCompare(b.nombre);
   });
-  const visibles =
-    ordenados.length > 0
-      ? ordenados.filter((t) => t.documentos_count > 0 || siempreMostrar.has(t.nombre))
-      : TEMAS_FALLBACK;
+  const visibles = ordenados.filter((t) => t.documentos_count > 0);
 
   return (
     <header className="border-b border-chat-line bg-chat-shell px-5 py-4">

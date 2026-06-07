@@ -21,15 +21,12 @@ class Settings(BaseSettings):
     ALLOWED_EMAIL_DOMAIN: str = "unitru.edu.pe"
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
 
-    OPENAI_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-2.0-flash"
-    # Modelo alternativo si el principal agota cuota (429) en Gemini
-    LLM_MODEL_FALLBACK: str = "gemini-2.0-flash"
+    LLM_MODEL: str = "gemini-2.5-pro"
     EMBEDDING_MODEL: str = "text-embedding-004"
     EMBEDDING_DIM: int = 768
     # Respuestas concisas (el detalle va en fuentes, no en el cuerpo)
-    LLM_MAX_OUTPUT_TOKENS: int = 1024
+    LLM_MAX_OUTPUT_TOKENS: int = 8192
 
     CHUNK_SIZE: int = 900
     CHUNK_OVERLAP: int = 150

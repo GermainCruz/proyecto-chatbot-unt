@@ -3,12 +3,9 @@ from __future__ import annotations
 import hashlib
 import math
 import google.generativeai as genai
-from openai import OpenAI
 
 from app.core.config import settings
 
-
-_openai_client: OpenAI | None = None
 
 _PLACEHOLDER_MARKERS = ("tu_api", "your_api", "api_key_aqui", "changeme", "example")
 
@@ -20,15 +17,6 @@ def _is_usable_api_key(key: str | None) -> bool:
     if len(lower) < 20:
         return False
     return not any(marker in lower for marker in _PLACEHOLDER_MARKERS)
-
-
-def _get_openai_client() -> OpenAI | None:
-    global _openai_client
-    if not _is_usable_api_key(settings.OPENAI_API_KEY):
-        return None
-    if _openai_client is None:
-        _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    return _openai_client
 
 
 def _get_gemini_embeddings(texts: list[str]) -> list[list[float]] | None:
@@ -48,10 +36,9 @@ def _get_gemini_embeddings(texts: list[str]) -> list[list[float]] | None:
 
 
 def _fallback_embedding(text: str, dim: int) -> list[float]:
-    """Embedding determinista para entornos sin OPENAI_API_KEY.
+    """Embedding determinista para entornos sin GOOGLE_API_KEY.
 
-    Solo permite indexar y consultar como prueba; la calidad RAG con OpenAI
-    es muy superior. Genera un vector pseudoaleatorio basado en hash MD5
+    Solo permite indexar y consultar como prueba. Genera un vector pseudoaleatorio basado en hash MD5
     del texto y luego lo normaliza (norma L2 = 1).
     """
     seed = hashlib.md5(text.encode("utf-8")).digest()
@@ -75,16 +62,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     if gemini_embeddings is not None:
         return gemini_embeddings
 
-    # 2. Intentar con OpenAI
-    openai_client = _get_openai_client()
-    if openai_client is not None:
-        try:
-            resp = openai_client.embeddings.create(model=settings.EMBEDDING_MODEL, input=texts)
-            return [d.embedding for d in resp.data]
-        except Exception:
-            pass
-
-    # 3. Fallback (modo demo sin API keys válidas)
+    # 2. Fallback (modo demo sin API keys válidas)
     return [_fallback_embedding(t, settings.EMBEDDING_DIM) for t in texts]
 
 
