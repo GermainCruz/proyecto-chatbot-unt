@@ -12,6 +12,9 @@ _RE_BOILERPLATE_FIN = re.compile(
     r"(?is)\n+si necesitas el detalle completo[^\n]*ver documentos oficiales[^\n]*\.?\s*$",
 )
 _RE_SECCION = re.compile(r"(?im)^\s*(\*\*)?\s*(respuesta|detalles|fuente)\s*(\*\*)?\s*:\s*$")
+_RE_SECCION_INLINE = re.compile(
+    r"(?im)^\s*(\*\*)?\s*(respuesta|detalles|fuente)\s*(\*\*)?\s*:\s*(.+)$"
+)
 
 
 def _limpiar_item(linea: str) -> str:
@@ -22,7 +25,7 @@ def _limpiar_item(linea: str) -> str:
 
 
 def _items_desde_linea(linea: str) -> list[str]:
-    if linea.count("•") > 1:
+    if "•" in linea:
         return [p.strip() for p in re.split(r"\s*•\s*", linea.strip()) if p.strip()]
     m = re.match(r"^\s*[\-\*•]\s*(.+)$", linea.strip())
     if m:
@@ -36,12 +39,33 @@ def _arreglar_listas(texto: str) -> str:
         if not linea.strip():
             salida.append("")
             continue
+        if re.match(r"^\s*[\-\*•]\s*$", linea):
+            continue
         if _RE_SECCION.match(linea):
-            salida.append(linea.strip())
+            s = _RE_SECCION.sub(lambda m: f"**{m.group(2).capitalize()}:**", linea.strip())
+            salida.append(s)
+            continue
+        m_inline = _RE_SECCION_INLINE.match(linea)
+        if m_inline:
+            salida.append(f"**{m_inline.group(2).capitalize()}:**")
+            resto = m_inline.group(4).strip()
+            if resto:
+                items = _items_desde_linea(resto)
+                if len(items) <= 1:
+                    limpio = _limpiar_item(resto)
+                    if limpio:
+                        salida.append(limpio)
+                else:
+                    for it in items:
+                        limpio = _limpiar_item(it)
+                        if limpio:
+                            salida.append(f"- {limpio}")
             continue
         items = _items_desde_linea(linea)
         if len(items) <= 1:
-            salida.append(linea)
+            limpio = _limpiar_item(items[0]) if items else ""
+            if limpio:
+                salida.append(limpio)
         else:
             for it in items:
                 limpio = _limpiar_item(it)

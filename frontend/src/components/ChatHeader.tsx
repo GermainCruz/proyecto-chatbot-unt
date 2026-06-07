@@ -82,7 +82,7 @@ export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }:
                 disabled={temasDisabled}
                 onClick={() => onSelectTema(active ? null : tema)}
                 className={cn(
-                  "rounded-full border px-4 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45",
+                  "rounded-full border px-4 py-1.5 text-xs font-semibold shadow-sm transition hover:-translate-y-px hover:shadow-soft active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45",
                   active
                     ? "border-chat-primary bg-chat-primary text-white"
                     : hasDocs

@@ -95,7 +95,7 @@ export function RightPanel({
 
       <section
         className={cn(
-          "min-h-0 flex-1",
+          "flex min-h-0 flex-1 flex-col",
           showDocumentosBase ? "mt-7" : "mt-0",
           mode !== "historial" && "opacity-55",
         )}
@@ -112,7 +112,7 @@ export function RightPanel({
             className="min-w-0 flex-1 bg-transparent text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
           />
         </div>
-        <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto pr-1 scrollbar-thin pb-10">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1 scrollbar-thin">
           {historial.length === 0 ? (
             <p className="text-xs text-zinc-500">Sin conversaciones aun.</p>
           ) : (
@@ -121,7 +121,7 @@ export function RightPanel({
                 <li
                   key={conv.id_conversacion}
                   className={cn(
-                    "group flex items-start gap-2 rounded-lg px-2 py-2 transition",
+                    "group flex items-start gap-2 rounded-lg border border-transparent px-2 py-2 shadow-sm transition hover:-translate-y-px hover:border-zinc-600 hover:shadow-soft active:translate-y-0",
                     conv.id_conversacion === activeId
                       ? "bg-white/10 text-white"
                       : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100",
@@ -215,7 +215,7 @@ export function RightPanel({
           type="button"
           onClick={onNew}
           disabled={!canNewChat}
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-zinc-500 text-sm font-bold text-zinc-100 transition hover:border-zinc-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-45"
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-zinc-500 text-sm font-bold text-zinc-100 shadow-sm transition hover:-translate-y-px hover:border-zinc-300 hover:bg-white/5 hover:shadow-soft active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45"
         >
           <Plus className="h-4 w-4" />
           Nuevo chat

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot } from "lucide-react";
+import { Bot, ChevronDown } from "lucide-react";
 
 import { CajaPregunta } from "@/components/CajaPregunta";
 import { ChatHeader } from "@/components/ChatHeader";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
+import { cn } from "@/lib/utils";
 
 const COPY_TEMA: Record<string, string> = {
   matricula:
@@ -30,6 +31,75 @@ const COPY_TEMA: Record<string, string> = {
   bienestar:
     "Buena eleccion: Bienestar. Puedes preguntarme por comedor, salud, apoyo estudiantil, actividades o requisitos de atencion. Vamos a ubicar la informacion util.",
 };
+
+const FAQS = [
+  {
+    titulo: "Matrícula",
+    keywords: ["matricula"],
+    preguntas: [
+      "¿Cuándo me toca matricularme según mi facultad?",
+      "¿Cómo me matriculo si jalé un curso?",
+      "¿Puedo modificar mi matrícula ya registrada?",
+      "¿Cuánto cuesta rectificar cursos o cambiar sección?",
+      "¿Qué pasa si desapruebo un curso tres veces?",
+    ],
+  },
+  {
+    titulo: "Postulación al comedor",
+    keywords: ["comedor"],
+    preguntas: [
+      "¿Cuáles son los requisitos para el comedor?",
+      "¿Qué documentos de ingresos debo presentar?",
+      "¿Puedo postular si tengo beca Pronabec?",
+      "¿Qué promedio necesito para el comedor?",
+      "¿Dónde realizo el registro virtual para postular?",
+    ],
+  },
+  {
+    titulo: "Gym UNT",
+    keywords: ["gym", "gimnasio"],
+    preguntas: [
+      "¿Dónde queda el gimnasio de la UNT?",
+      "¿Qué requisitos piden para entrar al gimnasio?",
+      "¿Cuáles son los horarios de atención disponibles?",
+      "¿Cómo me inscribo para ir a entrenar?",
+      "¿Cuántas veces por semana puedo asistir?",
+    ],
+  },
+  {
+    titulo: "Carné universitario",
+    keywords: ["carne"],
+    preguntas: [
+      "¿Cómo solicito el carné universitario por internet?",
+      "¿Cuánto cuesta el trámite del carné universitario?",
+      "¿Qué hago si perdí mi carné universitario?",
+      "¿Cómo debe ser la foto del carné?",
+      "¿Qué significa que mi trámite esté observado?",
+    ],
+  },
+  {
+    titulo: "Certificado de estudios",
+    keywords: ["certificado"],
+    preguntas: [
+      "¿Cómo se tramita el certificado de estudios?",
+      "¿Cuánto cuesta el certificado de estudios UNT?",
+      "¿Qué requisitos necesito para el certificado?",
+      "¿Cómo sé si mi pago fue validado?",
+      "¿Cómo corrijo un documento rechazado o pendiente?",
+    ],
+  },
+  {
+    titulo: "Elaboración de carpeta URA",
+    keywords: ["carpeta", "ura"],
+    preguntas: [
+      "¿Para qué grados aplica la elaboración de carpeta?",
+      "¿Qué requisitos necesito para armar mi carpeta?",
+      "¿Dónde puedo realizar el pago del trámite?",
+      "¿Qué es la fecha de colación del formulario?",
+      "¿Cómo soluciono una observación en mi carpeta?",
+    ],
+  },
+] as const;
 
 function normalizarTema(nombre: string) {
   return nombre
@@ -68,6 +138,7 @@ export default function ChatPage() {
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const { theme } = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [faqOpen, setFaqOpen] = useState(true);
 
   const nombre = user?.nombre_completo?.split(" ")[0] || "estudiante";
 
@@ -88,6 +159,15 @@ export default function ChatPage() {
     : [mensajeTema ?? bienvenida];
   const temasBloqueados = Boolean(activa?.mensajes?.length);
   const canNewChat = temasBloqueados;
+
+  const faqGrupo = useMemo(() => {
+    if (!selectedTema) return null;
+    const t = normalizarTema(selectedTema.descripcion || selectedTema.nombre || "");
+    return (
+      FAQS.find((g) => g.keywords.some((k) => t.includes(k))) ??
+      FAQS.find((g) => t.includes(normalizarTema(g.titulo)))
+    );
+  }, [selectedTema]);
   const conversacionesVisibles = conversaciones.filter((conv) => !conv.archivada);
   const conversacionesArchivadas = conversaciones.filter((conv) => conv.archivada);
 
@@ -363,13 +443,51 @@ export default function ChatPage() {
           onSelectTema={seleccionarTema}
         />
 
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-chat">
           <div className="mx-auto flex min-h-full max-w-3xl flex-col px-4 py-4">
             <div className="mb-5 flex items-center gap-3 text-xs font-semibold text-zinc-500">
               <span className="h-px flex-1 bg-chat-line" />
               Hoy
               <span className="h-px flex-1 bg-chat-line" />
             </div>
+
+            {faqGrupo && (
+              <div className="mb-5 rounded-2xl border border-chat-line bg-chat-shell px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => setFaqOpen((v) => !v)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
+                      Preguntas frecuentes
+                    </p>
+                    <p className="mt-0.5 text-sm font-bold text-zinc-100">{faqGrupo.titulo}</p>
+                  </div>
+                  <ChevronDown
+                    className={cn("h-4 w-4 text-zinc-400 transition-transform", faqOpen && "rotate-180")}
+                  />
+                </button>
+
+                {faqOpen && (
+                  <div className="mt-3 space-y-2">
+                    {faqGrupo.preguntas.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={async () => {
+                          setFaqOpen(false);
+                          await enviarPregunta(q);
+                        }}
+                        className="flex w-full items-center justify-between gap-3 rounded-full border border-zinc-700 bg-[#222220] px-4 py-2 text-left text-xs font-semibold text-zinc-200 shadow-sm transition hover:-translate-y-px hover:border-zinc-500 hover:bg-white/5 hover:shadow-soft active:translate-y-0"
+                      >
+                        <span className="min-w-0 flex-1">{q}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex-1 space-y-4">
               {mensajes.map((m) => (
