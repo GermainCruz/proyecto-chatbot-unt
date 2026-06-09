@@ -136,10 +136,15 @@ def buscar_fragmentos(
     """Recuperación semántica e híbrida con pgvector y pg_trgm."""
     top_k = top_k or settings.TOP_K
     embedding = embed_text(pregunta)
+    params: dict[str, object] = {"emb": str(embedding), "pregunta": pregunta, "k": top_k}
+    filtro_categoria = ""
+    if id_categoria is not None:
+        filtro_categoria = " AND d.id_categoria = :id_categoria"
+        params["id_categoria"] = id_categoria
 
     # Hybrid search: Similitud HNSW + Similitud Trigram en palabras clave y título
     sql = text(
-        """
+        f"""
         SELECT f.id_fragmento,
                f.id_documento,
                f.texto,
@@ -152,16 +157,13 @@ def buscar_fragmentos(
           JOIN documentos d ON d.id_documento = f.id_documento
          WHERE d.activo = TRUE
            AND d.estado = 'indexado'
-           AND (:id_categoria IS NULL OR d.id_categoria = :id_categoria)
+           {filtro_categoria}
          ORDER BY (1 - (f.embedding <=> CAST(:emb AS vector))) + 
                   (similarity(COALESCE(d.palabras_clave, '') || ' ' || d.titulo, :pregunta) * 0.3) DESC
          LIMIT :k
         """
     )
-    rows = db.execute(
-        sql,
-        {"emb": str(embedding), "pregunta": pregunta, "k": top_k, "id_categoria": id_categoria},
-    ).mappings().all()
+    rows = db.execute(sql, params).mappings().all()
     
     # Asignar el score combinado al campo 'score' para que funcione el resto de la lógica
     resultados = []
