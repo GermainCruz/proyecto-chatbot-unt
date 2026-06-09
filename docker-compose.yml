@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-untbot}
       POSTGRES_DB: ${POSTGRES_DB:-untbot}
     ports:
-      - "5432:5432"
+      # Puerto en el host configurable (por defecto 5434). Si 5433 está ocupado por otro contenedor, usa POSTGRES_HOST_PORT en .env
+      - "${POSTGRES_HOST_PORT:-5434}:5432"
     volumes:
       - untbot_pgdata:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
@@ -30,36 +31,36 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-untbot}:${POSTGRES_PASSWORD:-untbot}@db:5432/${POSTGRES_DB:-untbot}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      LLM_MODEL: ${LLM_MODEL:-gemini-2.5-pro}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-004}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-768}
       ALLOWED_EMAIL_DOMAIN: unitru.edu.pe
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@unitru.edu.pe}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin1234*}
       ADMIN_NAME: ${ADMIN_NAME:-Administrador UNT Bot}
+      STORAGE_DIR: /app/documentos
     volumes:
-      - untbot_storage:/app/storage
+      - ./documentos:/app/documentos
       - ./backend/app:/app/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+        NEXT_PUBLIC_API_URL: /api
     container_name: untbot_frontend
     restart: unless-stopped
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+      NEXT_PUBLIC_API_URL: /api
+      BACKEND_URL: http://backend:8000
     ports:
       - "3000:3000"
 
 volumes:
   untbot_pgdata:
-  untbot_storage:

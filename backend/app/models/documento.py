@@ -14,6 +14,7 @@ estado_documento_enum = Enum(
     "procesando",
     "indexado",
     "error",
+    "requiere_revision",
     name="estado_documento",
     create_type=False,
     native_enum=True,
@@ -40,6 +41,7 @@ class Documento(Base):
     ruta_archivo: Mapped[str] = mapped_column(Text, nullable=False)
     hash_archivo: Mapped[str | None] = mapped_column(CHAR(64), unique=True, nullable=True)
     tamano_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    palabras_clave: Mapped[str | None] = mapped_column(Text, nullable=True)
     estado: Mapped[str] = mapped_column(estado_documento_enum, default="pendiente")
     error_mensaje: Mapped[str | None] = mapped_column(Text, nullable=True)
     subido_por: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("usuarios.id_usuario"), nullable=True)

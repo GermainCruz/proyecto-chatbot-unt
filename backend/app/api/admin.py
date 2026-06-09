@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import shutil
-from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
@@ -11,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.paths import resolve_storage_dir
 from app.core.database import SessionLocal, get_db
 from app.core.deps import require_admin
 from app.models.conversacion import Conversacion, Mensaje
@@ -24,9 +24,6 @@ from app.schemas.documento import (
     UsuarioUpdateIn,
 )
 from app.services.rag import indexar_documento
-from dotenv import set_key
-from app.models.api_key import ApiKey
-from app.schemas.api_key import ApiKeyCreate, ApiKeyOut
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -55,6 +52,7 @@ def _to_documento_out(db: Session, doc: Documento) -> DocumentoOut:
         estado=doc.estado,
         error_mensaje=doc.error_mensaje,
         tamano_bytes=doc.tamano_bytes,
+        palabras_clave=doc.palabras_clave,
         fecha_subida=doc.fecha_subida,
         fecha_indexado=doc.fecha_indexado,
         categoria=CategoriaOut.model_validate(doc.categoria) if doc.categoria else None,
@@ -91,6 +89,7 @@ def subir_documento(
     titulo: str = Form(...),
     id_categoria: int | None = Form(None),
     descripcion: str | None = Form(None),
+    palabras_clave: str | None = Form(None),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
@@ -100,7 +99,7 @@ def subir_documento(
     if not archivo.filename or not archivo.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="El archivo debe tener extensión .pdf")
 
-    storage = Path(settings.STORAGE_DIR)
+    storage = resolve_storage_dir()
     storage.mkdir(parents=True, exist_ok=True)
     ruta = storage / f"{uuid4().hex}.pdf"
 
@@ -133,6 +132,7 @@ def subir_documento(
         ruta_archivo=str(ruta),
         hash_archivo=hash_archivo,
         tamano_bytes=tamano,
+        palabras_clave=palabras_clave,
         estado="pendiente",
         subido_por=admin.id_usuario,
     )
@@ -227,6 +227,7 @@ def metricas(
     total_msg = db.scalar(select(func.count(Mensaje.id_mensaje))) or 0
     msg_pos = db.scalar(select(func.count()).where(Mensaje.util == 1)) or 0
     msg_neg = db.scalar(select(func.count()).where(Mensaje.util == -1)) or 0
+    vacios = db.scalar(select(func.count()).where(Mensaje.contenido.ilike("%aún no cuento con información específica%"))) or 0
 
     return MetricasOut(
         total_usuarios=int(total_users),
@@ -239,97 +240,5 @@ def metricas(
         total_mensajes=int(total_msg),
         mensajes_utiles=int(msg_pos),
         mensajes_no_utiles=int(msg_neg),
+        vacios_conocimiento=int(vacios),
     )
-
-
-# ---------- Claves de API ----------
-
-@router.get("/api-keys", response_model=list[ApiKeyOut])
-def listar_api_keys(db: Session = Depends(get_db), _: Usuario = Depends(require_admin)):
-    return db.execute(select(ApiKey).order_by(ApiKey.creada_en.desc())).scalars().all()
-
-
-@router.post("/api-keys", response_model=ApiKeyOut, status_code=201)
-def crear_api_key(
-    payload: ApiKeyCreate,
-    db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
-):
-    key = ApiKey(nombre=payload.nombre, clave=payload.clave)
-    db.add(key)
-    db.commit()
-    db.refresh(key)
-    return key
-
-
-@router.post("/api-keys/{key_id}/activar", response_model=ApiKeyOut)
-def activar_api_key(
-    key_id: int,
-    db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
-):
-    key = db.get(ApiKey, key_id)
-    if not key:
-        raise HTTPException(status_code=404, detail="Clave no encontrada")
-
-    # Desactivar todas
-    from sqlalchemy import update
-    db.execute(update(ApiKey).values(activa=False))
-    db.commit() # Asegurar que se guarde el reset
-
-    # Activar la seleccionada
-    key.activa = True
-    db.commit()
-    db.refresh(key)
-
-    # Actualizar .env
-    try:
-        # Intentar encontrar el .env en varias ubicaciones posibles
-        posibles_rutas = [
-            Path(".env"),
-            Path("/app/.env"),
-            Path(__file__).parent.parent.parent.parent / ".env"
-        ]
-        
-        env_path = None
-        for p in posibles_rutas:
-            if p.exists():
-                env_path = p
-                break
-
-        if env_path:
-            set_key(str(env_path), "GOOGLE_API_KEY", key.clave)
-            logger.info(f"Archivo .env actualizado en {env_path} con la clave: {key.nombre}")
-        else:
-            logger.warning("No se encontró el archivo .env en ninguna de las rutas probadas")
-
-        # También actualizar en el proceso actual
-        import os
-        os.environ["GOOGLE_API_KEY"] = key.clave
-        # Intentar actualizar settings si es posible
-        try:
-            settings.GOOGLE_API_KEY = key.clave
-        except Exception:
-            pass
-
-    except Exception as e:
-        logger.error(f"Error actualizando .env: {e}")
-
-    return key
-
-
-@router.delete("/api-keys/{key_id}", status_code=204)
-def eliminar_api_key(
-    key_id: int,
-    db: Session = Depends(get_db),
-    _: Usuario = Depends(require_admin),
-):
-    key = db.get(ApiKey, key_id)
-    if not key:
-        raise HTTPException(status_code=404, detail="Clave no encontrada")
-
-    if key.activa:
-        raise HTTPException(status_code=400, detail="No se puede eliminar la clave que está en uso")
-
-    db.delete(key)
-    db.commit()

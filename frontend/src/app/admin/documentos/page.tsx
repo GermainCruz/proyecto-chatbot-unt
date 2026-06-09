@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Trash2,
   Upload,
+  AlertTriangle,
 } from "lucide-react";
 
 import { api, ApiError, type Categoria, type Documento } from "@/lib/api";
@@ -16,9 +17,10 @@ import { cn, formatBytes, formatDate } from "@/lib/utils";
 
 const ESTADO_STYLE: Record<string, { label: string; cls: string; icon: any }> = {
   pendiente: { label: "Pendiente", cls: "bg-slate-100 text-slate-700", icon: Clock },
-  procesando: { label: "Procesando", cls: "bg-amber-100 text-amber-800", icon: Loader2 },
-  indexado: { label: "Indexado", cls: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-  error: { label: "Error", cls: "bg-red-100 text-red-700", icon: AlertCircle },
+  procesando: { label: "Procesando", cls: "bg-unt-blue-50 text-unt-blue-700", icon: Loader2 },
+  indexado: { label: "Indexado", cls: "bg-emerald-50 text-emerald-700", icon: CheckCircle2 },
+  error: { label: "Error", cls: "bg-red-50 text-red-700", icon: AlertCircle },
+  requiere_revision: { label: "Revisar (OCR)", cls: "bg-orange-50 text-orange-700", icon: AlertTriangle },
 };
 
 export default function AdminDocumentosPage() {
@@ -30,7 +32,9 @@ export default function AdminDocumentosPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [palabrasClave, setPalabrasClave] = useState("");
   const [idCategoria, setIdCategoria] = useState<number | "">("");
+  const [confirmarEliminar, setConfirmarEliminar] = useState<number | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -68,11 +72,13 @@ export default function AdminDocumentosPage() {
       const fd = new FormData();
       fd.append("titulo", titulo.trim());
       if (descripcion) fd.append("descripcion", descripcion);
+      if (palabrasClave) fd.append("palabras_clave", palabrasClave);
       if (idCategoria) fd.append("id_categoria", String(idCategoria));
       fd.append("archivo", file);
       await api.upload("/admin/documentos", fd);
       setTitulo("");
       setDescripcion("");
+      setPalabrasClave("");
       setIdCategoria("");
       if (inputRef.current) inputRef.current.value = "";
       await cargar();
@@ -85,7 +91,7 @@ export default function AdminDocumentosPage() {
   };
 
   const eliminar = async (id: number) => {
-    if (!confirm("¿Eliminar este documento? Se borrarán también sus fragmentos.")) return;
+    setConfirmarEliminar(null);
     await api.delete(`/admin/documentos/${id}`);
     cargar();
   };
@@ -118,6 +124,15 @@ export default function AdminDocumentosPage() {
             />
           </div>
           <div>
+            <label className="label">Palabras clave</label>
+            <input
+              className="input"
+              value={palabrasClave}
+              onChange={(e) => setPalabrasClave(e.target.value)}
+              placeholder="Ej. postulación comedor, ticket, requisitos"
+            />
+          </div>
+          <div>
             <label className="label">Categoría</label>
             <select
               className="input"
@@ -127,7 +142,7 @@ export default function AdminDocumentosPage() {
               <option value="">— Sin categoría —</option>
               {cats.map((c) => (
                 <option key={c.id_categoria} value={c.id_categoria}>
-                  {c.nombre}
+                  {c.descripcion || c.nombre}
                 </option>
               ))}
             </select>
@@ -230,7 +245,7 @@ export default function AdminDocumentosPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {d.categoria?.nombre || "—"}
+                      {d.categoria?.descripcion || d.categoria?.nombre || "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -256,7 +271,7 @@ export default function AdminDocumentosPage() {
                           <RefreshCw className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => eliminar(d.id_documento)}
+                          onClick={() => setConfirmarEliminar(d.id_documento)}
                           className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
                           title="Eliminar"
                         >
@@ -271,6 +286,39 @@ export default function AdminDocumentosPage() {
           </table>
         </div>
       </section>
+
+      {/* Modal de Confirmación */}
+      {confirmarEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="card w-full max-w-md p-6 space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-4 text-red-600">
+              <div className="p-3 bg-red-50 rounded-full dark:bg-red-900/20">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-bold">¿Eliminar documento?</h3>
+            </div>
+            
+            <p className="text-slate-600 dark:text-slate-400">
+              Esta acción es irreversible. Se borrarán permanentemente el archivo y todos los fragmentos indexados en la base de datos.
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setConfirmarEliminar(null)}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-50 transition dark:border-slate-700 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => eliminar(confirmarEliminar)}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition shadow-lg shadow-red-600/20"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

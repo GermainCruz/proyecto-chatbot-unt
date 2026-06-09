@@ -10,6 +10,7 @@ from app.api import auth as auth_router
 from app.api import chat as chat_router
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.db_migrations import aplicar_migraciones
 from app.core.security import hash_password, verify_password
 from app.models.usuario import Usuario
 
@@ -47,9 +48,21 @@ def _ensure_admin() -> None:
         db.close()
 
 
+def _run_migrations() -> None:
+    db = SessionLocal()
+    try:
+        aplicar_migraciones(db)
+    except Exception as exc:
+        logger.warning(f"Migraciones de esquema: {exc}")
+        db.rollback()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     try:
+        _run_migrations()
         _ensure_admin()
     except Exception as exc:
         logger.error(f"No se pudo crear/verificar admin inicial: {exc}")

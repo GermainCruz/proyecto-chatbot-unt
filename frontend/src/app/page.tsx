@@ -72,7 +72,7 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="text-xs text-slate-500">
-              Solo se permite registro con correos institucionales <strong>@unitru.edu.pe</strong>.
+              Crea tu cuenta para empezar a resolver tus dudas.
             </p>
           </div>
           <Carrusel />
@@ -161,8 +161,8 @@ export default function HomePage() {
             <div className="flex items-start gap-3">
               <Mail className="h-5 w-5 text-unt-gold-600 mt-0.5" />
               <div>
-                <p className="font-medium">Correo institucional</p>
-                <p className="text-slate-500">@unitru.edu.pe</p>
+                <p className="font-medium">Correo de contacto</p>
+                <p className="text-slate-500">contacto@querybot.com</p>
               </div>
             </div>
           </div>

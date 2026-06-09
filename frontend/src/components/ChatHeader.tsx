@@ -6,15 +6,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { type TemaChat } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Coloca una imagen decorativa o mascota en `frontend/public/querybot-header.png`.
-const HEADER_IMAGE_SRC = "/querybot-header.png";
-
-const TEMAS_FALLBACK: TemaChat[] = [
-  { id_categoria: 1, nombre: "matricula", descripcion: "Procesos de matricula", documentos_count: 0 },
-  { id_categoria: 2, nombre: "silabo", descripcion: "Silabos y curriculas", documentos_count: 0 },
-  { id_categoria: 3, nombre: "tramites", descripcion: "Tramites academicos", documentos_count: 0 },
-  { id_categoria: 4, nombre: "bienestar", descripcion: "Bienestar universitario", documentos_count: 0 },
-];
+// SVG incluido en public/; opcionalmente reemplaza por querybot-header.png
+const HEADER_IMAGE_SRC = "/querybot-header.svg";
 
 type Props = {
   temas: TemaChat[];
@@ -35,7 +28,7 @@ function labelTema(tema: TemaChat) {
   return raw
     .split(",")[0]
     .split(" ")
-    .slice(0, 2)
+    .slice(0, 3)
     .join(" ")
     .replace(/^./, (c) => c.toUpperCase());
 }
@@ -49,11 +42,11 @@ export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }:
     if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     return b.documentos_count - a.documentos_count || a.nombre.localeCompare(b.nombre);
   });
-  const visibles = ordenados.length > 0 ? ordenados.slice(0, 6) : TEMAS_FALLBACK;
+  const visibles = ordenados.filter((t) => t.documentos_count > 0);
 
   return (
     <header className="border-b border-chat-line bg-chat-shell px-5 py-4">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-zinc-700 bg-[#242422]">
             {!imageError ? (
@@ -76,11 +69,12 @@ export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }:
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 xl:justify-end">
           <ThemeToggle variant="chat" className="mr-1" />
           <span className="mr-1 text-xs font-semibold text-zinc-400">Tema:</span>
           {visibles.map((tema) => {
             const active = selectedTema?.id_categoria === tema.id_categoria;
+            const hasDocs = tema.documentos_count > 0;
             return (
               <button
                 key={tema.id_categoria}
@@ -88,10 +82,12 @@ export function ChatHeader({ temas, selectedTema, temasDisabled, onSelectTema }:
                 disabled={temasDisabled}
                 onClick={() => onSelectTema(active ? null : tema)}
                 className={cn(
-                  "rounded-full border px-4 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45",
+                  "rounded-full border px-4 py-1.5 text-xs font-semibold shadow-sm transition hover:-translate-y-px hover:shadow-soft active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45",
                   active
                     ? "border-chat-primary bg-chat-primary text-white"
-                    : "border-zinc-500/70 bg-transparent text-zinc-400 hover:border-zinc-300 hover:text-zinc-100",
+                    : hasDocs
+                      ? "border-chat-gold/70 bg-chat-gold/10 text-chat-gold hover:border-chat-gold hover:bg-chat-gold/15"
+                      : "border-zinc-500/70 bg-transparent text-zinc-400 hover:border-zinc-300 hover:text-zinc-100",
                 )}
                 title={
                   tema.documentos_count > 0

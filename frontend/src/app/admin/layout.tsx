@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import {
   ArrowLeft,
   FileStack,
-  Key,
   LayoutDashboard,
   LogOut,
   Users,
@@ -21,7 +20,6 @@ const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/documentos", label: "Documentos", icon: FileStack },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
-  { href: "/admin/api-keys", label: "Claves API", icon: Key },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

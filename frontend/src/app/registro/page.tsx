@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -11,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 
 export default function RegistroPage() {
   const { registro } = useAuth();
+  const router = useRouter();
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
@@ -22,20 +24,34 @@ export default function RegistroPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password !== confirmar) {
-      setError("Las contraseñas no coinciden");
+
+    // Validaciones locales
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres");
       return;
     }
-    if (!correo.toLowerCase().endsWith("@unitru.edu.pe")) {
-      setError("Solo se aceptan correos @unitru.edu.pe");
+    if (!/[A-Z]/.test(password)) {
+      setError("La contraseña debe incluir al menos una mayúscula");
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setError("La contraseña debe incluir al menos un número");
+      return;
+    }
+    if (password !== confirmar) {
+      setError("Las contraseñas no coinciden");
       return;
     }
     setLoading(true);
     try {
       await registro(nombre.trim(), correo.trim().toLowerCase(), password);
     } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError("No se pudo crear la cuenta");
+      if (err instanceof ApiError) {
+        // Si el backend devuelve un error de validación (422) o similar
+        setError(err.message);
+      } else {
+        setError("No se pudo crear la cuenta");
+      }
     } finally {
       setLoading(false);
     }
@@ -47,16 +63,26 @@ export default function RegistroPage() {
         <Logo className="text-white [&_p]:!text-white" />
         <div className="space-y-3 max-w-md">
           <h2 className="text-4xl font-bold leading-tight">
-            Únete a la comunidad UNT digital.
+            Únete a la comunidad QueryBot.
           </h2>
           <p className="text-white/85">
-            Crea tu cuenta con tu correo institucional para empezar a chatear con QueryBot.
+            Crea tu cuenta con cualquier correo electrónico para empezar a chatear con QueryBot.
           </p>
         </div>
         <p className="text-xs text-white/70">© Universidad Nacional de Trujillo</p>
       </div>
 
       <div className="relative flex items-center justify-center p-6 sm:p-12">
+        <div className="absolute left-4 top-4 z-10">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2 text-xs font-semibold text-slate-700 backdrop-blur transition hover:bg-white dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver
+          </button>
+        </div>
         <div className="absolute right-4 top-4 z-10">
           <ThemeToggle />
         </div>
@@ -67,9 +93,6 @@ export default function RegistroPage() {
           <h1 className="text-2xl font-bold text-unt-blue-900 dark:text-unt-blue-100">
             Crear cuenta
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Solo correos <strong>@unitru.edu.pe</strong>.
-          </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
@@ -85,12 +108,12 @@ export default function RegistroPage() {
               />
             </div>
             <div>
-              <label className="label" htmlFor="correo">Correo institucional</label>
+              <label className="label" htmlFor="correo">Correo electrónico</label>
               <input
                 id="correo"
                 type="email"
                 required
-                placeholder="usuario@unitru.edu.pe"
+                placeholder="tu-correo@ejemplo.com"
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 className="input"
@@ -110,6 +133,7 @@ export default function RegistroPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="input pr-10"
                     autoComplete="new-password"
+                    placeholder="Mín. 8 caracteres"
                   />
                   <button
                     type="button"
@@ -120,6 +144,9 @@ export default function RegistroPage() {
                     {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Usa mayúsculas y números.
+                </p>
               </div>
               <div>
                 <label className="label" htmlFor="confirmar">Confirmar</label>

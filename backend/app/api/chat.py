@@ -186,12 +186,33 @@ def enviar_mensaje(
         except Exception:
             db.rollback()
 
-    resultado = responder_pregunta(db, payload.pregunta)
+    mensajes_previos = db.execute(
+        select(Mensaje)
+        .where(
+            Mensaje.id_conversacion == conv.id_conversacion,
+            Mensaje.id_mensaje != msg_user.id_mensaje,
+        )
+        .order_by(Mensaje.creado_en)
+    ).scalars().all()
+    historial = [{"rol": m.rol, "contenido": m.contenido} for m in mensajes_previos]
+    try:
+        resultado = responder_pregunta(
+            db,
+            payload.pregunta,
+            historial_mensajes=historial,
+            id_categoria=payload.id_categoria,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se pudo procesar la pregunta: {exc}",
+        ) from exc
 
     msg_asis = Mensaje(
         id_conversacion=conv.id_conversacion,
         rol="assistant",
         contenido=resultado["contenido"],
+        contenido_json=resultado.get("contenido_json"),
         fuentes=resultado["fuentes"],
         tokens_entrada=resultado["tokens_entrada"],
         tokens_salida=resultado["tokens_salida"],
@@ -201,10 +222,27 @@ def enviar_mensaje(
     db.commit()
     db.refresh(msg_asis)
 
+    contenido_json = resultado.get("contenido_json") or None
+    respuesta = None
+    detalles: list[str] = []
+    fuente: list[str] = []
+    if isinstance(contenido_json, dict):
+        respuesta = str(contenido_json.get("respuesta") or "").strip() or None
+        detalles_raw = contenido_json.get("detalles") or []
+        if isinstance(detalles_raw, list):
+            detalles = [str(d).strip() for d in detalles_raw if str(d).strip()]
+        fuente_raw = contenido_json.get("fuente") or []
+        if isinstance(fuente_raw, list):
+            fuente = [str(f).strip() for f in fuente_raw if str(f).strip()]
+
     return RespuestaChatOut(
         id_mensaje_usuario=msg_user.id_mensaje,
         id_mensaje_asistente=msg_asis.id_mensaje,
         contenido=resultado["contenido"],
+        contenido_json=contenido_json,
+        respuesta=respuesta,
+        detalles=detalles,
+        fuente=fuente,
         fuentes=resultado["fuentes"],
         latencia_ms=resultado["latencia_ms"],
     )

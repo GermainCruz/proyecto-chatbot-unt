@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+/** En desarrollo usa /api (proxy Next.js → backend) para evitar CORS y conflictos de puerto. */
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 const ACCESS_KEY = "untbot_access";
 const REFRESH_KEY = "untbot_refresh";
@@ -19,6 +20,23 @@ export const tokenStorage = {
     document.cookie = "untbot_access=; path=/; max-age=0";
   },
 };
+
+function formatApiDetail(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) {
+          return String((item as { msg: string }).msg);
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join(" ");
+  }
+  return "";
+}
 
 class ApiError extends Error {
   status: number;
@@ -67,7 +85,8 @@ async function request<T>(
     throw new ApiError(
       0,
       null,
-      `No se pudo conectar con el backend (${API_URL}). Verifica que esté corriendo en el puerto 8000.`,
+      `No se pudo conectar con el backend (${API_URL}). ` +
+        "Verifica que uvicorn esté activo en el puerto 8000 y reinicia el frontend (npm run dev) tras cambiar .env.",
     );
   }
 
@@ -83,10 +102,12 @@ async function request<T>(
   const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
-    const message =
-      (isJson && (data as any).detail) ||
-      `Error ${res.status} en ${path}`;
-    throw new ApiError(res.status, data, String(message));
+    const message = isJson ? formatApiDetail((data as { detail?: unknown }).detail) : "";
+    throw new ApiError(
+      res.status,
+      data,
+      message || `Error ${res.status} en ${path}`,
+    );
   }
   return data as T;
 }
@@ -132,6 +153,14 @@ export type Mensaje = {
   id_mensaje: number;
   rol: "user" | "assistant" | "system";
   contenido: string;
+  contenido_json?: {
+    respuesta: string;
+    detalles: string[];
+    fuente: string[];
+  } | null;
+  respuesta?: string | null;
+  detalles?: string[];
+  fuente?: string[];
   fuentes: Fuente[] | null;
   util: number | null;
   creado_en: string;
@@ -167,9 +196,10 @@ export type Documento = {
   titulo: string;
   descripcion?: string | null;
   formato: string;
-  estado: "pendiente" | "procesando" | "indexado" | "error";
+  estado: "pendiente" | "procesando" | "indexado" | "error" | "requiere_revision";
   error_mensaje?: string | null;
   tamano_bytes?: number | null;
+  palabras_clave?: string | null;
   fecha_subida: string;
   fecha_indexado?: string | null;
   categoria?: Categoria | null;
@@ -188,4 +218,5 @@ export type Metricas = {
   total_mensajes: number;
   mensajes_utiles: number;
   mensajes_no_utiles: number;
+  vacios_conocimiento: number;
 };

@@ -16,8 +16,7 @@ CREATE TYPE rol_usuario AS ENUM ('estudiante', 'administrador');
 CREATE TABLE usuarios (
     id_usuario        BIGSERIAL PRIMARY KEY,
     nombre_completo   VARCHAR(150) NOT NULL,
-    correo            VARCHAR(120) NOT NULL UNIQUE
-                      CHECK (correo ~* '^[a-z0-9._%+\-]+@unitru\.edu\.pe$'),
+    correo            VARCHAR(120) NOT NULL UNIQUE,
     contrasena_hash   VARCHAR(255) NOT NULL,
     rol               rol_usuario NOT NULL DEFAULT 'estudiante',
     avatar_url        TEXT,
@@ -65,6 +64,7 @@ CREATE TABLE mensajes (
     id_conversacion UUID NOT NULL REFERENCES conversaciones(id_conversacion) ON DELETE CASCADE,
     rol             rol_mensaje NOT NULL,
     contenido       TEXT NOT NULL,
+    contenido_json  JSONB,
     fuentes         JSONB,
     tokens_entrada  INTEGER,
     tokens_salida   INTEGER,
@@ -77,7 +77,7 @@ CREATE INDEX idx_mensajes_conv ON mensajes(id_conversacion, creado_en);
 -- ============================================================
 -- KNOWLEDGE BASE: documentos y fragmentos vectorizados
 -- ============================================================
-CREATE TYPE estado_documento AS ENUM ('pendiente', 'procesando', 'indexado', 'error');
+CREATE TYPE estado_documento AS ENUM ('pendiente', 'procesando', 'indexado', 'error', 'requiere_revision');
 
 CREATE TABLE categorias_documento (
     id_categoria SERIAL PRIMARY KEY,
@@ -95,6 +95,7 @@ CREATE TABLE documentos (
     ruta_archivo    TEXT NOT NULL,
     hash_archivo    CHAR(64) UNIQUE,
     tamano_bytes    BIGINT,
+    palabras_clave  TEXT,
     estado          estado_documento DEFAULT 'pendiente',
     error_mensaje   TEXT,
     subido_por      BIGINT REFERENCES usuarios(id_usuario),
@@ -133,17 +134,6 @@ CREATE TABLE consultas_rag (
     scores         REAL[],
     modelo_llm     VARCHAR(60),
     creado_en      TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ============================================================
--- CLAVES API LLM (Gemini / OpenAI gestionadas desde admin)
--- ============================================================
-CREATE TABLE llm_api_keys (
-    id_api_key  BIGSERIAL PRIMARY KEY,
-    nombre      VARCHAR(100) NOT NULL,
-    clave       TEXT NOT NULL,
-    activa      BOOLEAN DEFAULT FALSE,
-    creada_en   TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================================

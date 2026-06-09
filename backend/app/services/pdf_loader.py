@@ -14,6 +14,11 @@ class PDFChunk:
     indice: int
 
 
+class PDFScannedError(Exception):
+    """Excepción lanzada cuando el PDF parece ser un escaneo sin OCR."""
+    pass
+
+
 def _limpiar(texto: str) -> str:
     texto = re.sub(r"[ \t]+", " ", texto)
     texto = re.sub(r"\n{3,}", "\n\n", texto)
@@ -21,32 +26,57 @@ def _limpiar(texto: str) -> str:
 
 
 def extraer_texto_por_pagina(ruta_pdf: str | Path) -> list[tuple[int, str]]:
-    """Devuelve lista de (n_pagina, texto) limpiando texto vacío."""
+    """Devuelve lista de (n_pagina, texto) limpiando texto vacío.
+    Lanza PDFScannedError si detecta que es probable un escaneo sin OCR."""
     paginas: list[tuple[int, str]] = []
+    total_chars = 0
+    num_pages = 0
+    
     with pdfplumber.open(str(ruta_pdf)) as pdf:
+        num_pages = len(pdf.pages)
         for i, page in enumerate(pdf.pages, start=1):
             texto = page.extract_text() or ""
             texto = _limpiar(texto)
             if texto:
                 paginas.append((i, texto))
+                total_chars += len(texto)
+                
+    if num_pages > 0 and (total_chars / num_pages) < 50:
+        raise PDFScannedError("El PDF parece estar escaneado sin OCR (texto insuficiente).")
+        
     return paginas
 
 
 def _split_texto(texto: str, chunk_size: int, overlap: int) -> list[str]:
-    """Splitter recursivo simple por separadores naturales."""
-    separadores = ["\n\n", "\n", ". ", " "]
+    """Splitter recursivo simple por separadores naturales (mejorado para semántica)."""
+    # Intentar no separar secciones importantes
+    separadores = [
+        r"\n(?=[IVX]+\.|[0-9]+\.|[A-Z][A-Z\s]+:|\*\*|#)", # Títulos o listas enumeradas
+        "\n\n",
+        "\n",
+        ". ",
+        " "
+    ]
 
     def _split(t: str, sep_idx: int) -> list[str]:
         if len(t) <= chunk_size:
             return [t] if t.strip() else []
         if sep_idx >= len(separadores):
             return [t[i : i + chunk_size] for i in range(0, len(t), chunk_size - overlap)]
+        
         sep = separadores[sep_idx]
-        partes = t.split(sep)
+        if sep.startswith(r"\n(?="):
+            partes = re.split(sep, t)
+            # Reconstruir el separador porque re.split lo consume o no dependiendo de grupos
+            # Como es un lookahead, no lo consume
+            pass
+        else:
+            partes = t.split(sep)
+            
         chunks: list[str] = []
         actual = ""
         for parte in partes:
-            candidato = (actual + sep + parte) if actual else parte
+            candidato = (actual + sep + parte) if actual and not sep.startswith(r"\n(?=") else (actual + "\n" + parte if actual else parte)
             if len(candidato) <= chunk_size:
                 actual = candidato
             else:

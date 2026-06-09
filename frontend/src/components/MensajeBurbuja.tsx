@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertCircle,
   Bot,
   ChevronDown,
   Copy,
@@ -18,16 +19,22 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   mensaje: Mensaje;
+  variant?: "normal" | "error";
   onFeedback?: (id: number, util: number) => void;
 };
 
-export function MensajeBurbuja({ mensaje, onFeedback }: Props) {
+export function MensajeBurbuja({ mensaje, variant = "normal", onFeedback }: Props) {
   const { user } = useAuth();
   const [util, setUtil] = useState<number | null>(mensaje.util ?? null);
   const [showFuentes, setShowFuentes] = useState(false);
   const isUser = mensaje.rol === "user";
+  const isError = variant === "error";
   const fuentes = mensaje.fuentes ?? [];
-  const canUseActions = !isUser && mensaje.id_mensaje > 0;
+  const canUseActions = !isUser && !isError && mensaje.id_mensaje > 0;
+  const respuesta = mensaje.respuesta ?? mensaje.contenido_json?.respuesta ?? null;
+  const detalles = mensaje.detalles ?? mensaje.contenido_json?.detalles ?? [];
+  const fuente = mensaje.fuente ?? mensaje.contenido_json?.fuente ?? [];
+  const hasStructured = !isUser && !isError && (!!respuesta || detalles.length > 0 || fuente.length > 0);
 
   const handleVote = async (valor: number) => {
     if (!canUseActions) return;
@@ -42,27 +49,88 @@ export function MensajeBurbuja({ mensaje, onFeedback }: Props) {
   };
 
   const copy = () => {
-    navigator.clipboard.writeText(mensaje.contenido);
+    if (!hasStructured) {
+      navigator.clipboard.writeText(mensaje.contenido);
+      return;
+    }
+    const bloques: string[] = [];
+    if (respuesta) bloques.push(`RESPUESTA:\n${respuesta}`);
+    if (detalles.length) bloques.push(`DETALLES:\n${detalles.map((d) => `- ${d}`).join("\n")}`);
+    if (fuente.length) bloques.push(`FUENTE:\n${fuente.map((f) => `- ${f}`).join("\n")}`);
+    navigator.clipboard.writeText(bloques.join("\n\n"));
   };
 
   return (
     <div className={cn("flex animate-fade-in gap-3", isUser && "justify-end")}>
       {!isUser && (
-        <div className="mt-1 hidden h-8 w-8 shrink-0 place-items-center rounded-full bg-chat-primary text-white sm:grid">
-          <Bot className="h-4 w-4" />
+        <div
+          className={cn(
+            "mt-1 hidden h-8 w-8 shrink-0 place-items-center rounded-full sm:grid",
+            isError ? "bg-red-500/20 text-red-400" : "bg-chat-primary text-white",
+          )}
+        >
+          {isError ? <AlertCircle className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
         </div>
       )}
 
       <div
         className={cn(
           "max-w-[min(84%,620px)] px-4 py-3 text-sm font-semibold leading-relaxed shadow-sm",
-          isUser
-            ? "querybot-user-message rounded-2xl rounded-br-sm border border-zinc-600 bg-[#252523] text-zinc-100"
-            : "rounded-2xl rounded-tl-sm bg-chat-primary text-white",
+          isUser &&
+            "querybot-user-message rounded-2xl rounded-br-sm border border-zinc-600 bg-[#252523] text-zinc-100",
+          !isUser && !isError && "rounded-2xl rounded-tl-sm bg-chat-primary text-white",
+          isError &&
+            "rounded-2xl rounded-tl-sm border border-red-500/40 bg-red-950/50 text-red-100",
         )}
       >
-        <div className={cn("markdown-body", isUser ? "querybot-user-message text-zinc-100" : "text-white")}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{mensaje.contenido}</ReactMarkdown>
+        <div
+          className={cn(
+            "markdown-body",
+            isUser && "querybot-user-message text-zinc-100",
+            !isUser && !isError && "text-white",
+            isError && "text-red-100",
+          )}
+        >
+          {hasStructured ? (
+            <div className="space-y-4">
+              {respuesta && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">
+                    Respuesta
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-relaxed text-white">
+                    {respuesta}
+                  </p>
+                </div>
+              )}
+              {detalles.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">
+                    Detalles
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm font-semibold leading-relaxed text-white">
+                    {detalles.map((d, idx) => (
+                      <li key={`${mensaje.id_mensaje}-detalle-${idx}`}>{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {fuente.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">
+                    Fuente
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm font-semibold leading-relaxed text-white">
+                    {fuente.map((f, idx) => (
+                      <li key={`${mensaje.id_mensaje}-fuente-${idx}`}>- {f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{mensaje.contenido}</ReactMarkdown>
+          )}
         </div>
 
         {!isUser && fuentes.length > 0 && (
@@ -75,8 +143,13 @@ export function MensajeBurbuja({ mensaje, onFeedback }: Props) {
               <ChevronDown
                 className={cn("h-3.5 w-3.5 transition-transform", showFuentes && "rotate-180")}
               />
-              {showFuentes ? "Ocultar" : "Ver"} {fuentes.length} fuente{fuentes.length > 1 ? "s" : ""}
+              {showFuentes ? "Ocultar detalle" : "Ver documentos oficiales"}
             </button>
+            {!showFuentes && (
+              <p className="mt-1 text-[11px] text-white/60">
+                Fuentes: documentos oficiales UNT ({fuentes.length})
+              </p>
+            )}
             {showFuentes && (
               <ul className="mt-2 space-y-1">
                 {fuentes.map((f) => (
@@ -86,8 +159,7 @@ export function MensajeBurbuja({ mensaje, onFeedback }: Props) {
                   >
                     <FileText className="mr-1 inline h-3 w-3" />
                     {f.titulo}
-                    {f.pagina ? `, p. ${f.pagina}` : ""}
-                    <span className="ml-2 text-white/45">score: {f.score.toFixed(2)}</span>
+                    {f.pagina ? ` · pág. ${f.pagina}` : ""}
                   </li>
                 ))}
               </ul>

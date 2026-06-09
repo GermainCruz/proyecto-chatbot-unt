@@ -99,13 +99,56 @@
   background: transparent;
 }
 
+.scrollbar-chat::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.scrollbar-chat::-webkit-scrollbar-thumb {
+  background: rgb(var(--qb-text-muted) / 0.6);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.scrollbar-chat::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--qb-text) / 0.5);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.scrollbar-chat::-webkit-scrollbar-track {
+  background: rgb(var(--qb-border) / 0.12);
+  border-radius: 999px;
+}
+
 .markdown-body p {
   margin: 0.5rem 0;
+}
+.markdown-body p strong:only-child {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.markdown-body p:first-child strong:only-child {
+  margin-top: 0;
 }
 .markdown-body ul {
   list-style: disc;
   padding-left: 1.25rem;
-  margin: 0.5rem 0;
+  margin: 0.35rem 0 0.65rem;
+}
+.markdown-body ul li {
+  margin: 0.35rem 0;
+  line-height: 1.55;
+}
+.markdown-body ul li::marker {
+  color: inherit;
+}
+.markdown-body strong {
+  font-weight: 700;
 }
 .markdown-body ol {
   list-style: decimal;

@@ -46,6 +46,7 @@ class Mensaje(Base):
     )
     rol: Mapped[str] = mapped_column(rol_mensaje_enum, nullable=False)
     contenido: Mapped[str] = mapped_column(Text, nullable=False)
+    contenido_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     fuentes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     tokens_entrada: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_salida: Mapped[int | None] = mapped_column(Integer, nullable=True)
