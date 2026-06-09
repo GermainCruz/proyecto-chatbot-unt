@@ -22,10 +22,21 @@ build/
 
 # Storage
 backend/storage/
+documentos/
+*.tsbuildinfo
 *.pdf
 
 # Logs
 *.log
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
+*.sqlite
+*.sqlite3
 
 # IDE
 .idea/
