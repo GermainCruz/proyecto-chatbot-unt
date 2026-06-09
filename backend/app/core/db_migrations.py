@@ -10,6 +10,7 @@ def aplicar_migraciones(db: Session) -> None:
     db.execute(text("ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_correo_check"))
     
     db.execute(text("ALTER TABLE documentos ADD COLUMN IF NOT EXISTS palabras_clave TEXT"))
+    db.execute(text("ALTER TABLE mensajes ADD COLUMN IF NOT EXISTS contenido_json JSONB"))
     
     try:
         db.execute(text("ALTER TYPE estado_documento ADD VALUE IF NOT EXISTS 'requiere_revision'"))

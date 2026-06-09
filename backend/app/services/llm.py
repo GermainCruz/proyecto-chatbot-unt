@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import re
 import google.generativeai as genai
 from loguru import logger
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception
 
 from app.core.config import settings
-from app.services.conversation import Intent, instrucciones_para_intencion
+from app.services.conversation import Intent, instrucciones_para_intencion, plantilla_para_intencion
 from app.services.embeddings import _is_usable_api_key
 from app.services.formato_respuesta import normalizar_formato_respuesta
 from app.services.respuesta_local import generar_respuesta_local
@@ -18,17 +19,12 @@ SYSTEM_PROMPT = """Eres "UNT Bot", el asistente inteligente oficial de la Univer
 REGLAS DE ORO:
 0. **Solo UNT**: Si la pregunta no es sobre procesos académicos o administrativos de la UNT, responde cordialmente que no estás diseñado para ese tipo de consultas (sin inventar datos).
 1. **No Copiar Literal**: Está TERMINANTEMENTE PROHIBIDO copiar y pegar párrafos completos del PDF. Debes leer, interpretar y resumir la información.
-2. **Formato Obligatorio**: Todas tus respuestas deben seguir estrictamente esta estructura:
-   
-   **Respuesta:**
-   [1–2 oraciones claras y directas]
-
-   **Detalles:**
-   - [Punto clave 1]
-   - [Punto clave 2] (Usa viñetas para requisitos, pasos o datos importantes)
-
-   **Fuente:**
-   - [Nombre del documento oficial]
+2. **Formato Obligatorio**: Debes responder SOLO con un objeto JSON válido, sin texto adicional, con esta forma:
+   {
+     "respuesta": "1 o 2 oraciones claras y directas",
+     "detalles": ["punto clave 1", "punto clave 2"],
+     "fuente": ["Nombre del documento oficial"]
+   }
 
 3. **Falta de Información**: Si los documentos (CONTEXTO OFICIAL) NO contienen la información específica solicitada (por ejemplo, preguntan un plazo exacto y no aparece), DEBES indicar explícitamente: "Disculpa, no cuento con esa información específica en los documentos actuales." ¡NUNCA inventes información, plazos, correos ni asumas datos!
 4. **Limpieza**: Ignora cualquier texto que parezca basura de OCR, códigos extraños o encabezados institucionales repetitivos en el contexto.
@@ -56,6 +52,14 @@ def _get_gemini_model(model_name: str | None = None) -> genai.GenerativeModel | 
     return _gemini_models[name]
 
 
+def _get_gemini_plain_model(model_name: str | None = None) -> genai.GenerativeModel | None:
+    if not _is_usable_api_key(settings.GOOGLE_API_KEY):
+        return None
+    name = model_name or settings.LLM_MODEL
+    genai.configure(api_key=settings.GOOGLE_API_KEY)
+    return genai.GenerativeModel(model_name=name)
+
+
 def _texto_desde_respuesta_gemini(resp) -> str:
     try:
         if resp.text:
@@ -72,6 +76,108 @@ def _texto_desde_respuesta_gemini(resp) -> str:
             if t:
                 partes.append(t)
     return "".join(partes).strip()
+
+
+def _extraer_json(texto: str) -> dict | None:
+    texto = texto.strip()
+    if not texto:
+        return None
+    candidatos = [texto]
+    m = re.search(r"\{[\s\S]*\}", texto)
+    if m:
+        candidatos.insert(0, m.group(0))
+
+    for candidato in candidatos:
+        try:
+            data = json.loads(candidato)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            continue
+    return None
+
+
+def _a_lista_texto(valor: object) -> list[str]:
+    if isinstance(valor, list):
+        salida = []
+        for item in valor:
+            t = str(item).strip()
+            if t:
+                salida.append(t)
+        return salida
+    if isinstance(valor, str) and valor.strip():
+        return [valor.strip()]
+    return []
+
+
+def _es_respuesta_sin_evidencia(respuesta: str) -> bool:
+    low = respuesta.lower()
+    patrones = (
+        "no cuento con",
+        "no tengo",
+        "no encontr",
+        "no hall",
+        "no dispongo",
+        "no aparece",
+        "no figura",
+        "no se indica",
+        "no está indicado",
+        "no esta indicado",
+        "no está especificado",
+        "no esta especificado",
+    )
+    return any(p in low for p in patrones)
+
+
+def _limpiar_item_lista(item: str) -> str:
+    t = item.strip()
+    t = re.sub(r"^[-*•]+\s*", "", t).strip()
+    return t
+
+
+def _normalizar_partes(data: dict, fragmentos: list[dict]) -> dict:
+    respuesta = str(data.get("respuesta") or "").strip()
+    detalles = [_limpiar_item_lista(d) for d in _a_lista_texto(data.get("detalles"))]
+    detalles = [d for d in detalles if d]
+    fuente = [_limpiar_item_lista(f) for f in _a_lista_texto(data.get("fuente"))]
+    fuente = [f for f in fuente if f]
+
+    if not fuente:
+        titulo = _titulo_fuente(fragmentos)
+        if titulo:
+            fuente = [titulo]
+
+    if respuesta and _es_respuesta_sin_evidencia(respuesta):
+        detalles = []
+
+    return {
+        "respuesta": respuesta,
+        "detalles": detalles,
+        "fuente": fuente,
+    }
+
+
+def _respuesta_json_a_markdown(data: dict, fragmentos: list[dict]) -> str:
+    partes = _normalizar_partes(data, fragmentos)
+    respuesta = partes["respuesta"]
+    detalles = partes["detalles"]
+    fuente = partes["fuente"]
+
+    bloques: list[str] = []
+    if respuesta:
+        bloques.append(f"**Respuesta:**\n{respuesta}")
+    if detalles:
+        detalles_md = "\n".join(f"- {d}" for d in detalles if d.strip())
+        if detalles_md.strip():
+            bloques.append(f"**Detalles:**\n{detalles_md}")
+    if fuente:
+        fuente_md = "\n".join(f"- {f}" for f in fuente if f.strip())
+        if fuente_md.strip():
+            bloques.append(f"**Fuente:**\n{fuente_md}")
+
+    if not bloques:
+        return _formatear_salida("", fragmentos)
+    return "\n\n".join(bloques)
 
 
 def _generation_config_gemini():
@@ -138,13 +244,14 @@ def build_user_prompt(
         partes.append(historial)
     partes.append(f"Intención: {intent}")
     partes.append(instrucciones_para_intencion(intent))
+    partes.append(plantilla_para_intencion(intent))
     if sugerencia_typo:
         partes.append(sugerencia_typo)
     partes.append(f"PREGUNTA DEL ESTUDIANTE:\n{pregunta}")
     partes.append(
-        "Instrucción Final: Responde de forma humana y resumida siguiendo el formato 'Respuesta:', 'Detalles:' y 'Fuente:'. "
-        "No menciones que estás leyendo un contexto. Si el usuario pregunta 'donde queda el gym', no respondas 'El gimnasio queda...', "
-        "responde directamente 'El gimnasio de la UNT se ubica en...'."
+        "Instrucción Final: Responde solo con JSON válido usando las claves respuesta, detalles y fuente. "
+        "No uses markdown, no uses comillas triples, no agregues explicación fuera del JSON. "
+        "Si el usuario pregunta 'donde queda el gym', en 'respuesta' escribe directamente la ubicación."
     )
     return "\n\n".join(partes)
 
@@ -202,8 +309,8 @@ def generar_respuesta(
     historial: str = "",
     intent: Intent = "general",
     sugerencia_typo: str | None = None,
-) -> tuple[str, int, int]:
-    """Devuelve (texto, tokens_entrada, tokens_salida)."""
+) -> tuple[str, int, int, dict | None]:
+    """Devuelve (markdown, tokens_entrada, tokens_salida, contenido_json)."""
     # Priorizar saludo si la intención es saludo y la pregunta es corta
     if intent == "saludo" and len(pregunta.split()) <= 4:
         msg = (
@@ -212,7 +319,7 @@ def generar_respuesta(
         )
         if sugerencia_typo:
             msg = f"{sugerencia_typo}\n\n{msg}"
-        return (msg, 0, 0)
+        return (msg, 0, 0, {"respuesta": msg, "detalles": [], "fuente": []})
 
     user_prompt = build_user_prompt(
         pregunta,
@@ -226,7 +333,11 @@ def generar_respuesta(
         resultado = _generar_con_gemini(user_prompt, settings.LLM_MODEL)
         if resultado:
             texto, t_in, t_out = resultado
-            return (_formatear_salida(texto, fragmentos), t_in, t_out)
+            estructurada = _extraer_json(texto)
+            if estructurada:
+                partes = _normalizar_partes(estructurada, fragmentos)
+                return (_respuesta_json_a_markdown(estructurada, fragmentos), t_in, t_out, partes)
+            return (_formatear_salida(texto, fragmentos), t_in, t_out, None)
     except Exception as exc:
         if _es_error_cuota(exc):
             logger.warning("Cuota Gemini agotada; usando resumen local")
@@ -243,17 +354,17 @@ def generar_respuesta(
         
         if sugerencia_typo:
             msg = f"{sugerencia_typo}\n\n{msg}"
-        return (msg, 0, 0)
+        return (msg, 0, 0, {"respuesta": msg, "detalles": [], "fuente": []})
 
     fb = _fallback_usuario(pregunta, fragmentos, sugerencia_typo)
-    return (_formatear_salida(fb, fragmentos), 0, 0)
+    return (_formatear_salida(fb, fragmentos), 0, 0, None)
 
 
 def generar_titulo_conversacion(pregunta: str) -> str:
     """Genera un título corto basado en la primera pregunta."""
     base = pregunta.strip().split("\n")[0]
 
-    gemini = _get_gemini_model(settings.LLM_MODEL)
+    gemini = _get_gemini_plain_model(settings.LLM_MODEL)
     if gemini:
         try:
             prompt = (

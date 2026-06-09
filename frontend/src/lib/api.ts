@@ -153,6 +153,14 @@ export type Mensaje = {
   id_mensaje: number;
   rol: "user" | "assistant" | "system";
   contenido: string;
+  contenido_json?: {
+    respuesta: string;
+    detalles: string[];
+    fuente: string[];
+  } | null;
+  respuesta?: string | null;
+  detalles?: string[];
+  fuente?: string[];
   fuentes: Fuente[] | null;
   util: number | null;
   creado_en: string;

@@ -224,6 +224,17 @@ export default function ChatPage() {
       const detalle = await api.get<ConversacionDetalle>(`/chat/conversaciones/${id}`);
       setActiva(detalle);
       setMensajeTema(null);
+      const etiqueta = temasPorConversacion[id];
+      if (!etiqueta) {
+        setSelectedTema(null);
+      } else {
+        const norm = normalizarTema(etiqueta);
+        const temaConv =
+          temas.find((t) => normalizarTema(t.descripcion || t.nombre || "") === norm) ||
+          temas.find((t) => normalizarTema(t.nombre) === norm) ||
+          temas.find((t) => normalizarTema(t.descripcion || "") === norm);
+        setSelectedTema(temaConv ?? null);
+      }
       setPanelMode("historial");
     } catch {
       /* noop */
@@ -395,7 +406,7 @@ export default function ChatPage() {
         err instanceof Error ? err.message : "Error de conexion con el servidor.";
       const errorMsg = crearMensajeUI(
         `**No pude procesar tu pregunta**\n\n${detalle}\n\n` +
-          "Comprueba que el backend este activo y que las API keys en `.env` sean validas (o deja el modo demo).",
+          "Comprueba que el backend este activo y, si usas Gemini, que `GOOGLE_API_KEY` en `.env` sea valida. Si el problema continua, revisa los logs del backend.",
         "error",
       );
       setActiva((prev) =>

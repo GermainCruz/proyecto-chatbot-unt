@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.models.documento import CategoriaDocumento, Documento, FragmentoDocumento
 from app.services.embeddings import embed_text, embed_texts
 from app.services.conversation import (
+    detectar_desalineacion_tema,
     detectar_intencion,
     expandir_consulta,
     formatear_historial,
@@ -21,6 +22,45 @@ from app.services.academic_guard import evaluar_alcance_academico
 from app.services.llm import generar_respuesta, generar_titulo_conversacion
 from app.services.pdf_loader import chunkear_pdf, PDFScannedError
 from app.services.rag_filter import seleccionar_fragmentos
+
+
+def _mensaje_desalineacion(tema_actual: str, tema_detectado: str) -> str:
+    return (
+        f'Nota: tu consulta parece corresponder al tema "{tema_detectado}" y no al tema seleccionado '
+        f'"{tema_actual}". Para ayudarte mejor, realicé la búsqueda con el tema que coincide con tu pregunta.\n\n'
+    )
+
+
+def _mensaje_sin_evidencia(
+    *,
+    intent: str,
+    sugerencia_typo: str | None = None,
+    tema_activo: str | None = None,
+    tema_detectado: str | None = None,
+) -> str:
+    base = (
+        "Disculpa, no encontré información suficientemente específica en los documentos cargados para responder con precisión."
+    )
+    ayudas = {
+        "procedimiento": "Puedes reformular tu consulta preguntando por pasos, portal, pago o documentos requeridos.",
+        "requisitos": "Puedes reformular tu consulta preguntando por requisitos, documentos, promedio o condiciones específicas.",
+        "fechas": "Puedes reformular tu consulta preguntando por cronograma, fechas límite, periodo o horario.",
+        "ubicacion": "Puedes reformular tu consulta preguntando por oficina, portal, dirección o lugar de atención.",
+    }
+    extras: list[str] = []
+    if tema_activo and tema_detectado and tema_activo != tema_detectado:
+        extras.append(
+            f'Además, tu pregunta parece pertenecer al tema "{tema_detectado}" y no a "{tema_activo}".'
+        )
+    if intent in ayudas:
+        extras.append(ayudas[intent])
+    else:
+        extras.append("Si deseas, intenta reformular la consulta con más detalle o preguntarme por un aspecto más específico.")
+
+    msg = base + " " + " ".join(extras)
+    if sugerencia_typo:
+        msg = f"{sugerencia_typo}\n\n{msg}"
+    return msg
 
 
 def indexar_documento(db: Session, documento: Documento) -> tuple[int, str | None]:
@@ -156,6 +196,13 @@ def responder_pregunta(
                 "scores": [],
             }
 
+        pregunta_norm, sugerencia_typo = normalizar_pregunta(pregunta)
+        intent = detectar_intencion(pregunta_norm)
+        historial = formatear_historial(historial_mensajes or [])
+        cat = db.get(CategoriaDocumento, id_categoria) if id_categoria is not None else None
+        nombre_tema = (cat.descripcion or cat.nombre) if cat else None
+        desalineado, tema_detectado = detectar_desalineacion_tema(pregunta_norm, nombre_tema)
+
         if id_categoria is not None:
             docs_idx = (
                 db.scalar(
@@ -167,16 +214,15 @@ def responder_pregunta(
                 )
                 or 0
             )
-            if int(docs_idx) == 0:
-                cat = db.get(CategoriaDocumento, id_categoria)
-                nombre_tema = (cat.descripcion or cat.nombre) if cat else f"ID {id_categoria}"
+            if int(docs_idx) == 0 and not desalineado:
                 msg = (
-                    f'Disculpa, aún no cuento con documentos oficiales cargados para el tema "{nombre_tema}". '
+                    f'Disculpa, aún no cuento con documentos oficiales cargados para el tema "{nombre_tema or f"ID {id_categoria}"}". '
                     "Por eso no puedo darte una respuesta precisa. "
                     "Si necesitas, un administrador puede subir PDFs en el panel de Documentos."
                 )
                 return {
                     "contenido": msg,
+                    "contenido_json": {"respuesta": msg, "detalles": [], "fuente": []},
                     "fuentes": [],
                     "tokens_entrada": 0,
                     "tokens_salida": 0,
@@ -186,13 +232,9 @@ def responder_pregunta(
                     "scores": [],
                 }
 
-        pregunta_norm, sugerencia_typo = normalizar_pregunta(pregunta)
-        intent = detectar_intencion(pregunta_norm)
-        historial = formatear_historial(historial_mensajes or [])
-
         # Si es un saludo corto, responder directamente sin búsqueda RAG
         if intent == "saludo" and len(pregunta_norm.split()) <= 3:
-            respuesta, t_in, t_out = generar_respuesta(
+            respuesta, t_in, t_out, contenido_json = generar_respuesta(
                 pregunta_norm,
                 [],
                 historial=historial,
@@ -201,6 +243,7 @@ def responder_pregunta(
             )
             return {
                 "contenido": respuesta,
+                "contenido_json": contenido_json,
                 "fuentes": [],
                 "tokens_entrada": t_in,
                 "tokens_salida": t_out,
@@ -211,7 +254,9 @@ def responder_pregunta(
             }
 
         # Búsqueda inicial con pregunta normalizada
-        fragmentos = buscar_fragmentos(db, pregunta_norm, id_categoria=id_categoria)
+        usar_categoria = id_categoria if not desalineado else None
+        busqueda_global_forzada = desalineado
+        fragmentos = buscar_fragmentos(db, pregunta_norm, id_categoria=usar_categoria)
         candidatos = [f for f in fragmentos if (f.get("score") or 0) >= settings.SCORE_THRESHOLD]
 
         para_llm, para_fuentes = seleccionar_fragmentos(
@@ -226,7 +271,7 @@ def responder_pregunta(
         if not para_llm:
             pregunta_exp = expandir_consulta(pregunta_norm)
             if pregunta_exp != pregunta_norm:
-                fragmentos_exp = buscar_fragmentos(db, pregunta_exp, id_categoria=id_categoria)
+                fragmentos_exp = buscar_fragmentos(db, pregunta_exp, id_categoria=usar_categoria)
                 candidatos_exp = [f for f in fragmentos_exp if (f.get("score") or 0) >= settings.SCORE_THRESHOLD]
                 
                 para_llm_exp, para_fuentes_exp = seleccionar_fragmentos(
@@ -239,13 +284,31 @@ def responder_pregunta(
                 if para_llm_exp:
                     para_llm, para_fuentes = para_llm_exp, para_fuentes_exp
 
+        if not para_llm and id_categoria is not None and not desalineado:
+            fragmentos_global = buscar_fragmentos(db, pregunta_norm, id_categoria=None)
+            candidatos_global = [f for f in fragmentos_global if (f.get("score") or 0) >= settings.SCORE_THRESHOLD]
+            para_llm_global, para_fuentes_global = seleccionar_fragmentos(
+                pregunta_norm,
+                candidatos_global,
+                max_para_llm=settings.RAG_MAX_FRAGMENTOS_LLM,
+                max_fuentes=settings.RAG_MAX_FUENTES,
+                min_rank=settings.RAG_MIN_RANK + 0.05,
+            )
+            if para_llm_global:
+                para_llm, para_fuentes = para_llm_global, para_fuentes_global
+                busqueda_global_forzada = True
+
         # Si aún no hay fragmentos relevantes, responder con mensaje de disculpa
         if not para_llm:
-            msg = "Disculpa, aún no cuento con información específica detallada sobre este tema en mis documentos actuales. Por favor, intenta reformular tu consulta con más contexto o contacta a la oficina correspondiente de la UNT."
-            if sugerencia_typo:
-                msg = f"{sugerencia_typo}\n\n{msg}"
+            msg = _mensaje_sin_evidencia(
+                intent=intent,
+                sugerencia_typo=sugerencia_typo,
+                tema_activo=nombre_tema,
+                tema_detectado=tema_detectado,
+            )
             return {
                 "contenido": msg,
+                "contenido_json": {"respuesta": msg, "detalles": [], "fuente": []},
                 "fuentes": [],
                 "tokens_entrada": 0,
                 "tokens_salida": 0,
@@ -255,13 +318,15 @@ def responder_pregunta(
                 "scores": [],
             }
 
-        respuesta, t_in, t_out = generar_respuesta(
+        respuesta, t_in, t_out, contenido_json = generar_respuesta(
             pregunta_norm,
             para_llm,
             historial=historial,
             intent=intent,
             sugerencia_typo=sugerencia_typo,
         )
+        if busqueda_global_forzada and nombre_tema and tema_detectado:
+            respuesta = _mensaje_desalineacion(nombre_tema, tema_detectado) + respuesta
         latencia_ms = int((time.time() - inicio) * 1000)
 
         fuentes = [
@@ -276,6 +341,7 @@ def responder_pregunta(
 
         return {
             "contenido": respuesta,
+            "contenido_json": contenido_json,
             "fuentes": fuentes,
             "tokens_entrada": t_in,
             "tokens_salida": t_out,
@@ -286,9 +352,12 @@ def responder_pregunta(
         }
     except Exception as e:
         from loguru import logger
+        db.rollback()
         logger.error(f"Error interno en responder_pregunta: {str(e)}")
+        msg = "Lo siento, ocurrió un error interno al procesar tu consulta. Por favor, intenta de nuevo más tarde."
         return {
-            "contenido": "Lo siento, ocurrió un error interno al procesar tu consulta. Por favor, intenta de nuevo más tarde.",
+            "contenido": msg,
+            "contenido_json": {"respuesta": msg, "detalles": [], "fuente": []},
             "fuentes": [],
             "tokens_entrada": 0,
             "tokens_salida": 0,

@@ -1,8 +1,9 @@
-"""Mejoras conversacionales: corrección de typos, intención y memoria de contexto."""
+"""Mejoras conversacionales: corrección de typos, intención, tema y memoria de contexto."""
 from __future__ import annotations
 
 import re
 from typing import Literal
+import unicodedata
 
 Intent = Literal[
     "informacion",
@@ -100,6 +101,60 @@ _INSTRUCCIONES_POR_INTENCION: dict[Intent, str] = {
     ),
 }
 
+_TOPIC_ALIASES: dict[str, list[str]] = {
+    "matricula": [
+        "matricula", "matricular", "matricularme", "matricularse", "inscripcion",
+        "rectificacion", "cursos", "seccion", "creditos", "suv",
+    ],
+    "comedor": [
+        "comedor", "comedor universitario", "alimentacion", "postulacion comedor",
+        "pronabec", "promedio", "ingresos", "ficha socioeconomica",
+    ],
+    "gimnasio": [
+        "gym", "gimnasio", "gimnasio unt", "entrenar", "pesas", "entrenamiento",
+    ],
+    "carne": [
+        "carne", "carnet", "carné", "carnet universitario", "carne universitario",
+        "foto del carne", "foto del carnet",
+    ],
+    "certificado": [
+        "certificado", "certificado de estudios", "constancia de estudios",
+        "documento rechazado", "pago validado",
+    ],
+    "carpeta": [
+        "carpeta", "elaboracion de carpeta", "elaboracion de carpeta ura",
+        "colacion", "fecha de colacion", "observacion en mi carpeta",
+    ],
+    "silabo": [
+        "silabo", "sílabo", "syllabus", "malla", "plan de estudios",
+    ],
+    "tramites": [
+        "tramite", "tramites", "trámite", "trámites", "solicitud", "proceso",
+    ],
+    "bienestar": [
+        "bienestar", "bienestar universitario", "servicio social",
+    ],
+}
+
+_TOPIC_LABELS: dict[str, str] = {
+    "matricula": "Matrícula",
+    "comedor": "Comedor universitario",
+    "gimnasio": "Gym UNT",
+    "carne": "Carné universitario",
+    "certificado": "Certificado de estudios",
+    "carpeta": "Elaboración de carpeta URA",
+    "silabo": "Sílabos",
+    "tramites": "Trámites",
+    "bienestar": "Bienestar universitario",
+}
+
+
+def _normalizar_texto(texto: str) -> str:
+    t = unicodedata.normalize("NFD", texto.lower())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    t = re.sub(r"[^a-z0-9\s]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
 
 def normalizar_pregunta(pregunta: str) -> tuple[str, str | None]:
     """Corrige typos comunes. Devuelve (pregunta_normalizada, mensaje_sugerencia|None)."""
@@ -136,6 +191,43 @@ def instrucciones_para_intencion(intent: Intent) -> str:
     return _INSTRUCCIONES_POR_INTENCION.get(intent, _INSTRUCCIONES_POR_INTENCION["general"])
 
 
+def plantilla_para_intencion(intent: Intent) -> str:
+    if intent == "procedimiento":
+        return (
+            "Estructura recomendada:\n"
+            "**Respuesta:** una síntesis breve.\n"
+            "**Detalles:** 3 a 5 pasos numerados o en viñetas, en orden de ejecución.\n"
+            "**Fuente:** documentos oficiales usados."
+        )
+    if intent == "requisitos":
+        return (
+            "Estructura recomendada:\n"
+            "**Respuesta:** indica si existe una lista de requisitos.\n"
+            "**Detalles:** enumera requisitos o documentos uno por línea.\n"
+            "**Fuente:** documentos oficiales usados."
+        )
+    if intent == "fechas":
+        return (
+            "Estructura recomendada:\n"
+            "**Respuesta:** indica el plazo o cronograma principal.\n"
+            "**Detalles:** lista fechas, horarios o periodos en viñetas cortas.\n"
+            "**Fuente:** documentos oficiales usados."
+        )
+    if intent == "ubicacion":
+        return (
+            "Estructura recomendada:\n"
+            "**Respuesta:** indica directamente dónde se realiza.\n"
+            "**Detalles:** agrega oficina, portal, dirección o horario si aparece.\n"
+            "**Fuente:** documentos oficiales usados."
+        )
+    return (
+        "Estructura recomendada:\n"
+        "**Respuesta:** 1 o 2 oraciones.\n"
+        "**Detalles:** puntos clave breves y concretos.\n"
+        "**Fuente:** documentos oficiales usados."
+    )
+
+
 def formatear_historial(
     mensajes: list[dict],
     max_turnos: int = 4,
@@ -160,18 +252,54 @@ def formatear_historial(
 
 def expandir_consulta(pregunta: str) -> str:
     """Expande la consulta con sinónimos para mejorar el recall."""
-    from app.services.rag_filter import _normalizar, _SINONIMOS
-    
-    texto = _normalizar(pregunta)
-    palabras = texto.split()
-    nuevos_terminos = set(palabras)
-    
-    for palabra in palabras:
-        for concepto, variantes in _SINONIMOS.items():
-            if palabra in variantes:
-                nuevos_terminos.add(concepto)
-                # Añadir un par de variantes más si la palabra es corta (ej. gym -> gimnasio)
-                for v in variantes[:2]:
-                    nuevos_terminos.add(v)
-    
-    return " ".join(nuevos_terminos)
+    from app.services.rag_filter import _SINONIMOS
+
+    texto = _normalizar_texto(pregunta)
+    nuevos_terminos: set[str] = set(texto.split())
+
+    for concepto, variantes in _SINONIMOS.items():
+        if any(variant in texto for variant in variantes):
+            nuevos_terminos.add(concepto)
+            nuevos_terminos.update(variantes[:4])
+
+    for concepto, variantes in _TOPIC_ALIASES.items():
+        if any(variant in texto for variant in variantes):
+            nuevos_terminos.add(concepto)
+            nuevos_terminos.update(variantes[:4])
+
+    if "suv" in texto:
+        nuevos_terminos.update({"sistema", "universitario", "virtual"})
+    if "ura" in texto:
+        nuevos_terminos.update({"unidad", "registro", "academico"})
+    if any(x in texto for x in ("costo", "cuanto cuesta", "precio", "pago")):
+        nuevos_terminos.update({"costo", "pago", "monto", "precio"})
+    if any(x in texto for x in ("horario", "horarios", "atencion", "turno", "turnos")):
+        nuevos_terminos.update({"horario", "horarios", "turno", "turnos", "manana", "tarde", "atencion"})
+    if any(x in texto for x in ("donde", "ubicacion", "oficina", "portal")):
+        nuevos_terminos.update({"ubicacion", "oficina", "portal"})
+
+    return " ".join(sorted(nuevos_terminos))
+
+
+def detectar_temas(texto: str) -> set[str]:
+    normalizado = _normalizar_texto(texto)
+    temas: set[str] = set()
+    for tema, aliases in _TOPIC_ALIASES.items():
+        if any(alias in normalizado for alias in aliases):
+            temas.add(tema)
+    return temas
+
+
+def detectar_desalineacion_tema(pregunta: str, tema_activo: str | None) -> tuple[bool, str | None]:
+    if not tema_activo:
+        return False, None
+
+    temas_pregunta = detectar_temas(pregunta)
+    temas_activos = detectar_temas(tema_activo)
+    if not temas_pregunta or not temas_activos:
+        return False, None
+    if temas_pregunta & temas_activos:
+        return False, None
+
+    tema_detectado = next(iter(sorted(temas_pregunta)))
+    return True, _TOPIC_LABELS.get(tema_detectado, tema_detectado.capitalize())

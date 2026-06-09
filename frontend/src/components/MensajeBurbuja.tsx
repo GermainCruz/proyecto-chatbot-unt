@@ -31,6 +31,10 @@ export function MensajeBurbuja({ mensaje, variant = "normal", onFeedback }: Prop
   const isError = variant === "error";
   const fuentes = mensaje.fuentes ?? [];
   const canUseActions = !isUser && !isError && mensaje.id_mensaje > 0;
+  const respuesta = mensaje.respuesta ?? mensaje.contenido_json?.respuesta ?? null;
+  const detalles = mensaje.detalles ?? mensaje.contenido_json?.detalles ?? [];
+  const fuente = mensaje.fuente ?? mensaje.contenido_json?.fuente ?? [];
+  const hasStructured = !isUser && !isError && (!!respuesta || detalles.length > 0 || fuente.length > 0);
 
   const handleVote = async (valor: number) => {
     if (!canUseActions) return;
@@ -45,7 +49,15 @@ export function MensajeBurbuja({ mensaje, variant = "normal", onFeedback }: Prop
   };
 
   const copy = () => {
-    navigator.clipboard.writeText(mensaje.contenido);
+    if (!hasStructured) {
+      navigator.clipboard.writeText(mensaje.contenido);
+      return;
+    }
+    const bloques: string[] = [];
+    if (respuesta) bloques.push(`RESPUESTA:\n${respuesta}`);
+    if (detalles.length) bloques.push(`DETALLES:\n${detalles.map((d) => `- ${d}`).join("\n")}`);
+    if (fuente.length) bloques.push(`FUENTE:\n${fuente.map((f) => `- ${f}`).join("\n")}`);
+    navigator.clipboard.writeText(bloques.join("\n\n"));
   };
 
   return (
@@ -79,7 +91,46 @@ export function MensajeBurbuja({ mensaje, variant = "normal", onFeedback }: Prop
             isError && "text-red-100",
           )}
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{mensaje.contenido}</ReactMarkdown>
+          {hasStructured ? (
+            <div className="space-y-4">
+              {respuesta && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">
+                    Respuesta
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-relaxed text-white">
+                    {respuesta}
+                  </p>
+                </div>
+              )}
+              {detalles.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">
+                    Detalles
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm font-semibold leading-relaxed text-white">
+                    {detalles.map((d, idx) => (
+                      <li key={`${mensaje.id_mensaje}-detalle-${idx}`}>{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {fuente.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-white/70">
+                    Fuente
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm font-semibold leading-relaxed text-white">
+                    {fuente.map((f, idx) => (
+                      <li key={`${mensaje.id_mensaje}-fuente-${idx}`}>- {f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{mensaje.contenido}</ReactMarkdown>
+          )}
         </div>
 
         {!isUser && fuentes.length > 0 && (

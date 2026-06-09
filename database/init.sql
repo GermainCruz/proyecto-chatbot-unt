@@ -64,6 +64,7 @@ CREATE TABLE mensajes (
     id_conversacion UUID NOT NULL REFERENCES conversaciones(id_conversacion) ON DELETE CASCADE,
     rol             rol_mensaje NOT NULL,
     contenido       TEXT NOT NULL,
+    contenido_json  JSONB,
     fuentes         JSONB,
     tokens_entrada  INTEGER,
     tokens_salida   INTEGER,

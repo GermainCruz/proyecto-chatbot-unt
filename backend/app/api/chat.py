@@ -212,6 +212,7 @@ def enviar_mensaje(
         id_conversacion=conv.id_conversacion,
         rol="assistant",
         contenido=resultado["contenido"],
+        contenido_json=resultado.get("contenido_json"),
         fuentes=resultado["fuentes"],
         tokens_entrada=resultado["tokens_entrada"],
         tokens_salida=resultado["tokens_salida"],
@@ -221,10 +222,27 @@ def enviar_mensaje(
     db.commit()
     db.refresh(msg_asis)
 
+    contenido_json = resultado.get("contenido_json") or None
+    respuesta = None
+    detalles: list[str] = []
+    fuente: list[str] = []
+    if isinstance(contenido_json, dict):
+        respuesta = str(contenido_json.get("respuesta") or "").strip() or None
+        detalles_raw = contenido_json.get("detalles") or []
+        if isinstance(detalles_raw, list):
+            detalles = [str(d).strip() for d in detalles_raw if str(d).strip()]
+        fuente_raw = contenido_json.get("fuente") or []
+        if isinstance(fuente_raw, list):
+            fuente = [str(f).strip() for f in fuente_raw if str(f).strip()]
+
     return RespuestaChatOut(
         id_mensaje_usuario=msg_user.id_mensaje,
         id_mensaje_asistente=msg_asis.id_mensaje,
         contenido=resultado["contenido"],
+        contenido_json=contenido_json,
+        respuesta=respuesta,
+        detalles=detalles,
+        fuente=fuente,
         fuentes=resultado["fuentes"],
         latencia_ms=resultado["latencia_ms"],
     )
